@@ -170,6 +170,56 @@ them needs a proxy server holding a key, which this deliberately does not have.
 deliberately **sequential with an 8-second gap between shares**, and results are cached. Do not
 "optimise" it into parallel requests: that rate-limits every row at once and the screen looks broken.
 
+## THE OWNER'S BITCOIN RESEARCH HIERARCHY (supplied 2026-08-06) — the intended direction
+
+He supplied a ranked source list and an evidence hierarchy for Bitcoin. **None of it is implemented
+yet.** It is recorded here verbatim in substance because it is the clearest statement of what he
+wants this app to become, and because a cold session would otherwise rebuild the wrong thing.
+
+⚠️ **IT SPLITS INTO THREE PILES AND THEY ARE NOT INTERCHANGEABLE.** Treating it as one wish-list is
+the mistake to avoid — two thirds of it cannot be, or should not be, code in this app.
+
+**Pile 1 — news outlets. NOT BUILDABLE HERE, AND HE ALREADY AGREES.**
+Tier 1: CoinDesk, The Block, Blockworks, Bitcoin Magazine, Decrypt. Tier 2: Bloomberg, FT, Reuters,
+WSJ, CNBC. Every one is CORS-blocked from a static page (the same wall documented above), and
+scoring their headlines is the "no sentiment scraping" decision this app was built on. His own list
+says the same thing twice — *"Ignore: headlines lacking on-chain or macro support"* and *"Ignore:
+price predictions without methodology"*. Do not build a sentiment pillar. If news is ever wanted it
+is as a **linked reading list**, not as a number.
+
+**Pile 2 — the data. THIS IS THE REAL WORK, and it is the one he asked to prototype.**
+His Tier 3 and his `SignalPriority`, in his order of importance:
+
+1. ETF inflows/outflows
+2. Institutional purchases
+3. Exchange reserves
+4. On-chain activity
+5. Macro (rates, USD, liquidity)
+6. Regulation
+7. Corporate adoption
+8. Miner behaviour
+
+Named sources: Glassnode, CryptoQuant, Messari (on-chain/flows); Ark Invest, Fidelity Digital
+Assets, Bitwise (research, PDF — not machine-readable, treat as reading, not as a feed).
+
+⚠️ **These are FACTS WITH DATES, which is the only kind of input this engine accepts.** They fit the
+existing architecture: a new pillar, scored `null` when absent, renormalised over what is present.
+⚠️ **Whatever is added must clear the same two gates as everything else** — reachable from a browser
+without a proxy, and free enough for a real watchlist. Check both before designing around a source.
+
+**Pile 3 — the method. ALREADY THE APP'S DESIGN, and partly not code at all.**
+*"Weight evidence over opinions."* Evidence hierarchy: on-chain data > institutional flows > macro >
+regulation > news > social sentiment. Forecasts must state assumptions, cite data, carry uncertainty
+and avoid certainty language.
+
+That hierarchy is **already what `WEIGHTS` and the pillar design express**, and the "avoid certainty
+language" rule is already enforced by the no-predictions decision. His `OutputRule` (summarise
+consensus, bullish vs bearish, rate evidence 1–10, estimate probability, separate fact from opinion,
+cite the source) is written **for an assistant in conversation, not for a static page** — a page
+cannot read the FT and form a view. ⚠️ Do not try to make the app emit that report; it would have to
+fabricate the inputs. The one piece that DOES belong in the app is **citing the original source
+beside every number**, which the working-shown design already does.
+
 ## Storage keys
 
 `mkt_watchlist_v*`, `mkt_keys_v*`, `mkt_currency_v*`, `mkt_sort_v*`, `mkt_cache_v*`, `mkt_theme_v*`.
