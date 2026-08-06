@@ -1,0 +1,23 @@
+{
+  "name": "market-watch",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A daily market tracker that ranks a watchlist and rates each asset out of 5 stars, with the arithmetic behind every star visible on the same screen.",
+  "engines": {
+    "node": ">=22.6.0"
+  },
+  "scripts": {
+    "build": "node build.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test \"test/*.test.ts\"",
+    "smoke": "node build.ts && node test/app-smoke.mjs",
+    "check": "node build.ts && tsc --noEmit && node --test \"test/*.test.ts\" && node test/app-smoke.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.1",
+    "esbuild": "^0.28.1",
+    "typescript": "^5.6.0"
+  },
+  "license": "UNLICENSED"
+}

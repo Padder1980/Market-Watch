@@ -1,0 +1,1328 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0f1419">
+<title>Market Watch</title>
+<script>
+// ⚠️ INLINE, IN <head>, BEFORE ANY PAINT — and all three of those are load-bearing. A saved theme
+// restored from the main script at the end of <body> still lets the first paint use the system
+// scheme, which flashes the wrong colours and (on an iOS home-screen app) latches the status-bar
+// strip to a colour the app then never uses. Same rule as the running app's theme restore.
+(function () {
+  try {
+    var t = JSON.parse(localStorage.getItem("mkt_theme_v1") || '""');
+    if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t);
+  } catch (e) { /* private mode — fall through to the system scheme */ }
+})();
+</script>
+<style>
+:root {
+  color-scheme: light dark;
+  --bg: #f4f6f8; --surface: #ffffff; --surface-2: #eef1f5; --line: #dbe1e8;
+  --ink: #101820; --ink-soft: #4a5763; --ink-faint: #78868f;
+  --accent: #1f6feb; --accent-ink: #ffffff;
+  --up: #0f7a52; --down: #c0392b; --flat: #7a8790;
+  --star: #d99a00;
+  --risk-low: #0f7a52; --risk-moderate: #b07d00; --risk-high: #c9591f; --risk-very-high: #b3261e;
+  --shadow: 0 1px 2px rgba(16,24,32,.06), 0 6px 20px rgba(16,24,32,.07);
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1419; --surface: #171e26; --surface-2: #1e2731; --line: #2b3742;
+    --ink: #e8eef4; --ink-soft: #a7b4c0; --ink-faint: #74848f;
+    --accent: #4d92ff; --accent-ink: #06121f;
+    --up: #35c48b; --down: #ef6a5a; --flat: #7f8d97;
+    --star: #f0b429;
+    --risk-low: #35c48b; --risk-moderate: #e0ab2e; --risk-high: #ef8a52; --risk-very-high: #ef6a5a;
+    --shadow: 0 1px 2px rgba(0,0,0,.35), 0 8px 26px rgba(0,0,0,.4);
+  }
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f4f6f8; --surface: #ffffff; --surface-2: #eef1f5; --line: #dbe1e8;
+  --ink: #101820; --ink-soft: #4a5763; --ink-faint: #78868f;
+  --accent: #1f6feb; --accent-ink: #ffffff;
+  --up: #0f7a52; --down: #c0392b; --flat: #7a8790;
+  --star: #d99a00;
+  --risk-low: #0f7a52; --risk-moderate: #b07d00; --risk-high: #c9591f; --risk-very-high: #b3261e;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0f1419; --surface: #171e26; --surface-2: #1e2731; --line: #2b3742;
+  --ink: #e8eef4; --ink-soft: #a7b4c0; --ink-faint: #74848f;
+  --accent: #4d92ff; --accent-ink: #06121f;
+  --up: #35c48b; --down: #ef6a5a; --flat: #7f8d97;
+  --star: #f0b429;
+  --risk-low: #35c48b; --risk-moderate: #e0ab2e; --risk-high: #ef8a52; --risk-very-high: #ef6a5a;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--sans);
+  font-size: 16px; line-height: 1.45; -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 760px; margin: 0 auto; padding: 0 16px 64px; }
+
+/* ---- top bar ---- */
+.topbar {
+  position: sticky; top: 0; z-index: 20; background: var(--bg);
+  border-bottom: 1px solid var(--line);
+  padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 12px;
+  display: flex; align-items: center; gap: 12px;
+}
+.topbar h1 { font-size: 18px; margin: 0; letter-spacing: -.01em; flex: 1; }
+.topbar .sub { display: block; font-size: 12px; font-weight: 400; color: var(--ink-faint); }
+.iconbtn {
+  border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+  border-radius: 10px; width: 38px; height: 38px; font-size: 16px; cursor: pointer;
+  display: grid; place-items: center;
+}
+.iconbtn:active { transform: scale(.96); }
+.iconbtn[disabled] { opacity: .5; cursor: default; }
+
+/* ---- standing notice ---- */
+.notice {
+  margin: 16px 0; padding: 12px 14px; border-radius: 12px;
+  background: var(--surface-2); border: 1px solid var(--line);
+  font-size: 13px; color: var(--ink-soft);
+}
+.notice strong { color: var(--ink); }
+
+/* ---- sort chips ---- */
+.chips { display: flex; gap: 8px; overflow-x: auto; padding: 4px 0 12px; scrollbar-width: none; }
+.chips::-webkit-scrollbar { display: none; }
+.chip {
+  flex: 0 0 auto; padding: 7px 13px; border-radius: 999px; font-size: 13px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--surface); color: var(--ink-soft);
+}
+.chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+
+/* ---- cards ---- */
+.card {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+  padding: 14px; margin-bottom: 12px; box-shadow: var(--shadow);
+}
+.rowtop { display: flex; align-items: flex-start; gap: 12px; }
+.rank {
+  font-family: var(--mono); font-size: 12px; color: var(--ink-faint);
+  min-width: 20px; padding-top: 3px;
+}
+.ident { flex: 1; min-width: 0; }
+.sym { font-weight: 650; font-size: 16px; letter-spacing: -.01em; }
+.nm { font-size: 13px; color: var(--ink-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.px { text-align: right; }
+.px .val { font-family: var(--mono); font-size: 15px; font-weight: 600; }
+.px .chg { font-size: 12px; font-family: var(--mono); }
+.up { color: var(--up); } .down { color: var(--down); } .flat { color: var(--flat); }
+
+.verdict { display: flex; align-items: center; gap: 10px; margin: 12px 0 4px; flex-wrap: wrap; }
+.stars { font-size: 17px; letter-spacing: 2px; color: var(--star); }
+.stars .off { color: var(--line); }
+.pill {
+  font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 999px;
+  border: 1px solid currentColor; text-transform: uppercase; letter-spacing: .04em;
+}
+.pill.low { color: var(--risk-low); } .pill.moderate { color: var(--risk-moderate); }
+.pill.high { color: var(--risk-high); } .pill.very-high { color: var(--risk-very-high); }
+.kind { font-size: 11px; color: var(--ink-faint); border: 1px solid var(--line); border-radius: 999px; padding: 3px 8px; }
+
+.bars { margin-top: 10px; display: grid; gap: 7px; }
+.bar { display: grid; grid-template-columns: 96px 1fr 38px; gap: 10px; align-items: center; font-size: 12px; }
+.bar .lbl { color: var(--ink-soft); }
+.bar .track { height: 7px; border-radius: 4px; background: var(--surface-2); overflow: hidden; border: 1px solid var(--line); }
+/* ⚠️ `display: block` is load-bearing. `.track` is a grid ITEM so it gets blockified automatically,
+   but `.fill` is only its child — left inline, both `width` and `height` are ignored and every bar
+   renders empty while the number beside it reads 82. It looked fine in the DOM and in the unit
+   tests; only a screenshot showed it. Assert rendered geometry, not attributes. */
+.bar .fill { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
+.bar .num { font-family: var(--mono); text-align: right; color: var(--ink-soft); }
+.bar.na .lbl, .bar.na .num { color: var(--ink-faint); font-style: italic; }
+.bar.na .track { background: repeating-linear-gradient(135deg, var(--surface-2), var(--surface-2) 4px, transparent 4px, transparent 8px); }
+
+.more { margin-top: 10px; }
+.more summary {
+  cursor: pointer; font-size: 13px; color: var(--accent); list-style: none;
+  padding: 4px 0; user-select: none;
+}
+.more summary::-webkit-details-marker { display: none; }
+.more summary::before { content: "▸ "; }
+.more[open] summary::before { content: "▾ "; }
+.working { border-top: 1px solid var(--line); margin-top: 8px; padding-top: 10px; font-size: 13px; }
+.working h4 { margin: 12px 0 5px; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-faint); }
+.working h4:first-child { margin-top: 0; }
+.working ul { margin: 0; padding-left: 18px; color: var(--ink-soft); }
+.working li { margin: 3px 0; }
+.working .caveat { color: var(--ink); background: var(--surface-2); border-left: 3px solid var(--risk-moderate); padding: 8px 10px; border-radius: 0 8px 8px 0; margin: 6px 0; }
+.srcs { font-size: 11px; color: var(--ink-faint); margin-top: 10px; }
+
+/* ---- sheet ---- */
+.sheet-ov {
+  position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 40;
+  display: none; align-items: flex-end; justify-content: center;
+}
+.sheet-ov.on { display: flex; }
+.sheet {
+  background: var(--surface); width: 100%; max-width: 560px; max-height: 88vh; overflow-y: auto;
+  border-radius: 16px 16px 0 0; padding: 18px 18px calc(24px + env(safe-area-inset-bottom, 0px));
+}
+.sheet h2 { margin: 0 0 4px; font-size: 18px; }
+.sheet .hint { font-size: 13px; color: var(--ink-faint); margin: 0 0 16px; }
+label { display: block; font-size: 13px; font-weight: 600; margin: 14px 0 5px; }
+label .note { display: block; font-weight: 400; color: var(--ink-faint); font-size: 12px; margin-top: 2px; }
+input, select {
+  width: 100%; font-size: 16px; font-family: inherit; padding: 10px 12px;
+  border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); color: var(--ink);
+}
+input[type="text"] { font-family: var(--mono); }
+.btn {
+  width: 100%; padding: 12px; border-radius: 11px; border: none; font-size: 15px; font-weight: 600;
+  background: var(--accent); color: var(--accent-ink); cursor: pointer; margin-top: 18px;
+}
+.btn.ghost { background: transparent; color: var(--ink-soft); border: 1px solid var(--line); margin-top: 8px; }
+.wl { margin-top: 8px; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.wl-row { display: flex; align-items: center; gap: 8px; padding: 9px 11px; border-bottom: 1px solid var(--line); font-size: 14px; }
+.wl-row:last-child { border-bottom: none; }
+.wl-row .t { flex: 1; font-family: var(--mono); }
+.wl-row .k { font-size: 11px; color: var(--ink-faint); }
+.wl-row button { border: none; background: transparent; color: var(--down); cursor: pointer; font-size: 18px; padding: 0 4px; }
+.addrow { display: grid; grid-template-columns: 1fr 108px 44px; gap: 8px; margin-top: 8px; }
+.addrow button { border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); border-radius: 10px; font-size: 20px; cursor: pointer; }
+
+/* ---- states ---- */
+.empty, .status { text-align: center; padding: 40px 20px; color: var(--ink-faint); font-size: 14px; }
+.fail { background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--down); border-radius: 0 10px 10px 0; padding: 10px 12px; margin-bottom: 10px; font-size: 13px; }
+.fail b { color: var(--down); }
+.spin { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; vertical-align: -2px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.foot { text-align: center; font-size: 11px; color: var(--ink-faint); padding: 24px 0 0; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>Market Watch<span class="sub" id="asof">not loaded yet</span></h1>
+  <button class="iconbtn" id="themeBtn" title="Light / dark" aria-label="Toggle theme">◐</button>
+  <button class="iconbtn" id="setBtn" title="Settings" aria-label="Settings">⚙</button>
+  <button class="iconbtn" id="refBtn" title="Refresh" aria-label="Refresh">↻</button>
+</div>
+
+<div class="wrap">
+  <div class="notice">
+    <strong>These stars are not advice, and they are not a forecast.</strong>
+    They count how many measurable signals currently line up — past price behaviour, published
+    analyst views, and reported company financials. Every star can be traced to its arithmetic:
+    open <em>Show the working</em> on any row. Momentum is also the mechanism by which people buy
+    tops, so the risk band is a hard cap, never an average.
+  </div>
+
+  <div class="chips" id="chips">
+    <button class="chip" data-sort="stars" aria-pressed="true">Overall</button>
+    <button class="chip" data-sort="trend" aria-pressed="false">Trending up</button>
+    <button class="chip" data-sort="analyst" aria-pressed="false">Forecast growth</button>
+    <button class="chip" data-sort="fundamentals" aria-pressed="false">Business data</button>
+    <button class="chip" data-sort="risk" aria-pressed="false">Lowest risk</button>
+  </div>
+
+  <div id="list"></div>
+  <div class="foot">Build 2026-08-06 13:26 · data from CoinGecko, Twelve Data and Finnhub · nothing leaves this device except calls to those APIs</div>
+</div>
+
+<div class="sheet-ov" id="setOv">
+  <div class="sheet">
+    <h2>Settings</h2>
+    <p class="hint">Keys are stored only in this browser. They are sent to their own API and nowhere else.</p>
+
+    <label>Show prices in
+      <span class="note">Applies to crypto. Shares are priced in their own market's currency.</span>
+    </label>
+    <select id="curSel">
+      <option value="gbp">GBP £</option>
+      <option value="usd">USD $</option>
+      <option value="eur">EUR €</option>
+    </select>
+
+    <label>Twelve Data API key
+      <span class="note">Free at twelvedata.com — needed for shares and funds. Crypto works without any key.</span>
+    </label>
+    <input type="text" id="tdKey" placeholder="paste key" autocomplete="off" spellcheck="false">
+
+    <label>Finnhub API key
+      <span class="note">Free at finnhub.io — adds analyst forecasts and company financials. Optional.</span>
+    </label>
+    <input type="text" id="fhKey" placeholder="paste key" autocomplete="off" spellcheck="false">
+
+    <label>Watchlist</label>
+    <div class="wl" id="wl"></div>
+    <div class="addrow">
+      <input type="text" id="addId" placeholder="AAPL or bitcoin" autocomplete="off" spellcheck="false">
+      <select id="addKind">
+        <option value="equity">Share</option>
+        <option value="etf">Fund / ETF</option>
+        <option value="crypto">Crypto</option>
+      </select>
+      <button id="addBtn" aria-label="Add">+</button>
+    </div>
+
+    <button class="btn" id="saveBtn">Save and refresh</button>
+    <button class="btn ghost" id="closeBtn">Close</button>
+  </div>
+</div>
+
+<script>"use strict";
+var MK = (() => {
+  var __defProp = Object.defineProperty;
+  var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+  var __getOwnPropNames = Object.getOwnPropertyNames;
+  var __hasOwnProp = Object.prototype.hasOwnProperty;
+  var __export = (target, all) => {
+    for (var name in all)
+      __defProp(target, name, { get: all[name], enumerable: true });
+  };
+  var __copyProps = (to, from, except, desc) => {
+    if (from && typeof from === "object" || typeof from === "function") {
+      for (let key of __getOwnPropNames(from))
+        if (!__hasOwnProp.call(to, key) && key !== except)
+          __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+    }
+    return to;
+  };
+  var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
+
+  // entry.ts
+  var entry_exports = {};
+  __export(entry_exports, {
+    CONSENSUS_NEUTRAL: () => CONSENSUS_NEUTRAL,
+    ProviderError: () => ProviderError,
+    RISK_STAR_CAP: () => RISK_STAR_CAP,
+    STAR_THRESHOLDS: () => STAR_THRESHOLDS,
+    TARGET_NEUTRAL: () => TARGET_NEUTRAL,
+    WEIGHTS: () => WEIGHTS,
+    fetchCrypto: () => fetchCrypto,
+    fetchEquityHistory: () => fetchEquityHistory,
+    loadWatchlist: () => loadWatchlist,
+    profileRisk: () => profileRisk,
+    rankRatings: () => rankRatings,
+    rateAsset: () => rateAsset,
+    scoreAnalyst: () => scoreAnalyst,
+    scoreFundamentals: () => scoreFundamentals,
+    scoreTrend: () => scoreTrend,
+    starsFor: () => starsFor
+  });
+
+  // src/indicators.ts
+  function sma(values, n) {
+    if (n <= 0 || values.length < n) return null;
+    let sum = 0;
+    for (let i = values.length - n; i < values.length; i++) sum += values[i];
+    return sum / n;
+  }
+  function returnOver(values, lookback) {
+    if (lookback <= 0 || values.length < lookback + 1) return null;
+    const from = values[values.length - 1 - lookback];
+    const to = values[values.length - 1];
+    if (!(from > 0)) return null;
+    return to / from - 1;
+  }
+  function logReturns(values) {
+    const out = [];
+    for (let i = 1; i < values.length; i++) {
+      const prev = values[i - 1];
+      const cur = values[i];
+      if (prev > 0 && cur > 0) out.push(Math.log(cur / prev));
+    }
+    return out;
+  }
+  function annualisedVol(values, periodsPerYear = 252) {
+    const r = logReturns(values);
+    if (r.length < 20) return null;
+    const mean = r.reduce((a, b) => a + b, 0) / r.length;
+    const variance = r.reduce((a, b) => a + (b - mean) ** 2, 0) / (r.length - 1);
+    return Math.sqrt(variance) * Math.sqrt(periodsPerYear);
+  }
+  function maxDrawdown(values) {
+    if (values.length < 2) return null;
+    let peak = values[0];
+    let worst = 0;
+    for (const v of values) {
+      if (v > peak) peak = v;
+      if (peak > 0) {
+        const dd = 1 - v / peak;
+        if (dd > worst) worst = dd;
+      }
+    }
+    return worst;
+  }
+  function worstDay(values) {
+    if (values.length < 2) return null;
+    let worst = 0;
+    for (let i = 1; i < values.length; i++) {
+      const prev = values[i - 1];
+      const cur = values[i];
+      if (!(prev > 0)) continue;
+      const change = cur / prev - 1;
+      if (change < -worst) worst = -change;
+    }
+    return worst;
+  }
+  function rsi(values, n = 14) {
+    if (values.length < n * 2) return null;
+    let gain = 0;
+    let loss = 0;
+    for (let i = 1; i <= n; i++) {
+      const diff = values[i] - values[i - 1];
+      if (diff >= 0) gain += diff;
+      else loss -= diff;
+    }
+    let avgGain = gain / n;
+    let avgLoss = loss / n;
+    for (let i = n + 1; i < values.length; i++) {
+      const diff = values[i] - values[i - 1];
+      const g = diff > 0 ? diff : 0;
+      const l = diff < 0 ? -diff : 0;
+      avgGain = (avgGain * (n - 1) + g) / n;
+      avgLoss = (avgLoss * (n - 1) + l) / n;
+    }
+    if (avgLoss === 0) return avgGain === 0 ? 50 : 100;
+    const rs = avgGain / avgLoss;
+    return 100 - 100 / (1 + rs);
+  }
+  function logTrend(values, lookback) {
+    if (values.length < lookback || lookback < 10) return null;
+    const slice = values.slice(values.length - lookback);
+    const ys = [];
+    for (const v of slice) {
+      if (!(v > 0)) return null;
+      ys.push(Math.log(v));
+    }
+    const n = ys.length;
+    const meanX = (n - 1) / 2;
+    const meanY = ys.reduce((a, b) => a + b, 0) / n;
+    let sxy = 0;
+    let sxx = 0;
+    let syy = 0;
+    for (let i = 0; i < n; i++) {
+      const dx = i - meanX;
+      const dy = ys[i] - meanY;
+      sxy += dx * dy;
+      sxx += dx * dx;
+      syy += dy * dy;
+    }
+    if (sxx === 0) return null;
+    const slope = sxy / sxx;
+    const r2 = syy === 0 ? 0 : sxy * sxy / (sxx * syy);
+    return { slope, r2 };
+  }
+  function stretchPercentile(values, maLen = 50) {
+    if (values.length < maLen * 2) return null;
+    const gaps = [];
+    for (let i = maLen; i <= values.length; i++) {
+      const window = values.slice(i - maLen, i);
+      const avg = window.reduce((a, b) => a + b, 0) / maLen;
+      const last = window[maLen - 1];
+      if (avg > 0) gaps.push(last / avg - 1);
+    }
+    const current = gaps[gaps.length - 1];
+    if (gaps.length < 20 || current == null) return null;
+    let below = 0;
+    for (const g of gaps) if (g < current) below++;
+    return below / gaps.length;
+  }
+  function belowHigh(values, lookback) {
+    if (values.length < 2) return null;
+    const slice = values.slice(Math.max(0, values.length - lookback));
+    let high = 0;
+    for (const v of slice) if (v > high) high = v;
+    const last = slice[slice.length - 1];
+    if (!(high > 0)) return null;
+    return 1 - last / high;
+  }
+  function clamp(v, lo, hi) {
+    return v < lo ? lo : v > hi ? hi : v;
+  }
+  function ramp(value, lo, hi) {
+    if (hi === lo) return 50;
+    return clamp((value - lo) / (hi - lo) * 100, 0, 100);
+  }
+
+  // src/score.ts
+  var WEIGHTS = { trend: 0.45, analyst: 0.25, fundamentals: 0.3 };
+  var STAR_THRESHOLDS = [36, 50, 64, 78];
+  var TARGET_NEUTRAL = 0.12;
+  var CONSENSUS_NEUTRAL = 3.8;
+  var COVERAGE_K = 6;
+  function shrink(score, n, k = COVERAGE_K) {
+    if (n <= 0) return 50;
+    return 50 + (score - 50) * (n / (n + k));
+  }
+  function meanOf(parts) {
+    const present = parts.filter((p) => p != null && Number.isFinite(p));
+    if (present.length === 0) return null;
+    return present.reduce((a, b) => a + b, 0) / present.length;
+  }
+  function pct(x) {
+    return `${x >= 0 ? "+" : ""}${(x * 100).toFixed(1)}%`;
+  }
+  function scoreTrend(history) {
+    const reasons = [];
+    const last = history[history.length - 1];
+    if (history.length < 30 || last == null) {
+      return { score: null, confidence: 0, reasons: ["Not enough price history to judge a trend."] };
+    }
+    const parts = [];
+    const ma50 = sma(history, 50);
+    if (ma50 != null && ma50 > 0) {
+      const gap = last / ma50 - 1;
+      parts.push(ramp(gap, -0.12, 0.12));
+      reasons.push(
+        `Price is ${(Math.abs(gap) * 100).toFixed(1)}% ${gap >= 0 ? "above" : "below"} its 50-day average.`
+      );
+    }
+    const ma200 = sma(history, 200);
+    if (ma50 != null && ma200 != null && ma200 > 0) {
+      const gap = ma50 / ma200 - 1;
+      parts.push(ramp(gap, -0.1, 0.1));
+      reasons.push(
+        gap >= 0 ? "The 50-day average sits above the 200-day \u2014 a long-term uptrend." : "The 50-day average sits below the 200-day \u2014 a long-term downtrend."
+      );
+    }
+    const r3 = returnOver(history, 63);
+    if (r3 != null) {
+      parts.push(ramp(r3, -0.2, 0.3));
+      reasons.push(`Three-month return ${pct(r3)}.`);
+    }
+    const r6 = returnOver(history, 126);
+    if (r6 != null) {
+      parts.push(ramp(r6, -0.3, 0.5));
+      reasons.push(`Six-month return ${pct(r6)}.`);
+    }
+    const fit = logTrend(history, Math.min(history.length, 126));
+    if (fit != null) {
+      const quality = fit.slope > 0 ? ramp(fit.r2, 0.1, 0.8) : ramp(-fit.r2, -0.8, -0.1);
+      parts.push(quality);
+      if (fit.slope > 0) {
+        reasons.push(
+          fit.r2 >= 0.6 ? `Direction has been consistent \u2014 the six-month path tracks a rising line closely (R\xB2 ${fit.r2.toFixed(2)}). That is about direction, not calmness; see risk.` : `Rising overall, but the path is erratic (R\xB2 ${fit.r2.toFixed(2)}) \u2014 a less reliable trend.`
+        );
+      } else {
+        reasons.push("The underlying direction over six months is down.");
+      }
+    }
+    let score = meanOf(parts);
+    if (score == null) {
+      return { score: null, confidence: 0, reasons: ["Not enough price history to judge a trend."] };
+    }
+    const stretch = stretchPercentile(history, 50);
+    if (stretch != null && stretch > 0.9) {
+      const penalty = clamp((stretch - 0.9) * 220, 0, 22);
+      score = clamp(score - penalty, 0, 100);
+      reasons.push(
+        `Stretched further above its own 50-day average than it has been ${(stretch * 100).toFixed(0)}% of this year. Scored down: a run this extended has more room to snap back than to continue.`
+      );
+    }
+    const r = rsi(history, 14);
+    if (r != null) {
+      if (r >= 75) reasons.push(`RSI ${r.toFixed(0)} \u2014 in overbought territory.`);
+      else if (r <= 25) reasons.push(`RSI ${r.toFixed(0)} \u2014 heavily sold off, which cuts both ways.`);
+    }
+    const below = belowHigh(history, 252);
+    if (below != null && below > 1e-3) {
+      reasons.push(`${(below * 100).toFixed(1)}% below its 12-month high.`);
+    } else if (below != null) {
+      reasons.push("Sitting at its 12-month high.");
+    }
+    const confidence = clamp(history.length / 200, 0, 1);
+    return { score, confidence, reasons };
+  }
+  function scoreAnalyst(consensus, price) {
+    if (!consensus) {
+      return { score: null, confidence: 0, reasons: ["No analyst coverage available."] };
+    }
+    const reasons = [];
+    const parts = [];
+    const n = consensus.strongBuy + consensus.buy + consensus.hold + consensus.sell + consensus.strongSell;
+    if (n > 0) {
+      const weighted = (consensus.strongBuy * 5 + consensus.buy * 4 + consensus.hold * 3 + consensus.sell * 2 + consensus.strongSell * 1) / n;
+      const raw = ramp(weighted - CONSENSUS_NEUTRAL, -1, 0.8);
+      parts.push(shrink(raw, n));
+      reasons.push(
+        `${n} analyst${n === 1 ? "" : "s"} covering, averaging ${weighted.toFixed(1)}/5 (${consensus.strongBuy + consensus.buy} positive, ${consensus.hold} neutral, ${consensus.sell + consensus.strongSell} negative).`
+      );
+      if (n < 5) {
+        reasons.push("Thin coverage \u2014 this has been pulled toward neutral.");
+      }
+    }
+    if (consensus.targetMean != null && price > 0) {
+      const upside = consensus.targetMean / price - 1;
+      const raw = ramp(upside - TARGET_NEUTRAL, -0.25, 0.25);
+      const count = consensus.targetCount ?? n;
+      parts.push(shrink(raw, count));
+      reasons.push(
+        `Mean 12-month price target implies ${pct(upside)} from here (the market-wide average target sits about ${pct(TARGET_NEUTRAL)} above spot, so this is ${upside > TARGET_NEUTRAL ? "above" : "below"} typical).`
+      );
+    }
+    const score = meanOf(parts);
+    if (score == null) {
+      return { score: null, confidence: 0, reasons: ["No analyst coverage available."] };
+    }
+    return { score, confidence: clamp(n / 15, 0, 1), reasons };
+  }
+  function scoreFundamentals(f) {
+    if (!f) {
+      return { score: null, confidence: 0, reasons: ["No company fundamentals available."] };
+    }
+    const reasons = [];
+    const parts = [];
+    let fields = 0;
+    const total = 6;
+    if (f.revenueGrowthYoY != null && Number.isFinite(f.revenueGrowthYoY)) {
+      fields++;
+      parts.push(ramp(f.revenueGrowthYoY, -0.05, 0.25));
+      reasons.push(`Revenue ${pct(f.revenueGrowthYoY)} year on year.`);
+    }
+    if (f.epsGrowthYoY != null && Number.isFinite(f.epsGrowthYoY)) {
+      fields++;
+      parts.push(ramp(f.epsGrowthYoY, -0.1, 0.3));
+      reasons.push(`Earnings per share ${pct(f.epsGrowthYoY)} year on year.`);
+    }
+    if (f.netMargin != null && Number.isFinite(f.netMargin)) {
+      fields++;
+      parts.push(ramp(f.netMargin, 0, 0.25));
+      reasons.push(`Net margin ${(f.netMargin * 100).toFixed(1)}%.`);
+    }
+    if (f.returnOnEquity != null && Number.isFinite(f.returnOnEquity)) {
+      fields++;
+      parts.push(ramp(f.returnOnEquity, 0, 0.25));
+      reasons.push(`Return on equity ${(f.returnOnEquity * 100).toFixed(1)}%.`);
+    }
+    if (f.debtToEquity != null && Number.isFinite(f.debtToEquity)) {
+      fields++;
+      parts.push(100 - ramp(f.debtToEquity, 0, 3));
+      reasons.push(`Debt to equity ${f.debtToEquity.toFixed(2)}\xD7.`);
+    }
+    if (f.peRatio != null && Number.isFinite(f.peRatio)) {
+      fields++;
+      if (f.peRatio <= 0) {
+        parts.push(20);
+        reasons.push("Currently loss-making, so the P/E is not meaningful.");
+      } else {
+        parts.push(100 - ramp(f.peRatio, 8, 45));
+        reasons.push(`Price/earnings ${f.peRatio.toFixed(1)}\xD7.`);
+      }
+    }
+    const score = meanOf(parts);
+    if (score == null) {
+      return { score: null, confidence: 0, reasons: ["No company fundamentals available."] };
+    }
+    if (fields < 3) {
+      reasons.push("Only part of the financial picture was available.");
+    }
+    return { score, confidence: clamp(fields / total, 0, 1), reasons };
+  }
+  var VOL_BANDS = [
+    [0.18, "low"],
+    [0.32, "moderate"],
+    [0.55, "high"]
+  ];
+  var DD_BANDS = [
+    [0.15, "low"],
+    [0.3, "moderate"],
+    [0.5, "high"]
+  ];
+  var BAND_ORDER = ["low", "moderate", "high", "very-high"];
+  function bandFor(value, bands) {
+    for (const [limit, band] of bands) if (value < limit) return band;
+    return "very-high";
+  }
+  function profileRisk(history) {
+    const vol = annualisedVol(history);
+    const dd = maxDrawdown(history);
+    const worst = worstDay(history);
+    const reasons = [];
+    if (vol == null) {
+      return {
+        band: "very-high",
+        annualisedVol: null,
+        maxDrawdown: dd,
+        worstDay: worst,
+        reasons: [
+          "Not enough history to measure risk. Treated as the highest band until it can be measured \u2014 an unmeasured risk is not a low one."
+        ]
+      };
+    }
+    let band = "low";
+    if (vol != null) {
+      const b = bandFor(vol, VOL_BANDS);
+      if (BAND_ORDER.indexOf(b) > BAND_ORDER.indexOf(band)) band = b;
+      reasons.push(`Annualised volatility ${(vol * 100).toFixed(0)}%.`);
+    }
+    if (dd != null) {
+      const b = bandFor(dd, DD_BANDS);
+      if (BAND_ORDER.indexOf(b) > BAND_ORDER.indexOf(band)) band = b;
+      reasons.push(`Fell ${(dd * 100).toFixed(0)}% from a peak at its worst point in this window.`);
+    }
+    if (worst != null) {
+      reasons.push(`Worst single day ${pct(-worst)}.`);
+    }
+    return { band, annualisedVol: vol, maxDrawdown: dd, worstDay: worst, reasons };
+  }
+  var RISK_STAR_CAP = {
+    low: 5,
+    moderate: 5,
+    high: 4,
+    "very-high": 3
+  };
+  function starsFor(composite, risk, confidence) {
+    let stars = 1;
+    for (const t of STAR_THRESHOLDS) if (composite >= t) stars++;
+    const caveats = [];
+    const riskCap = RISK_STAR_CAP[risk];
+    if (stars > riskCap) {
+      caveats.push(
+        `Capped at ${riskCap} star${riskCap === 1 ? "" : "s"} because the risk band is ${risk.replace("-", " ")} \u2014 the signals look better than ${riskCap}, but this one can move violently.`
+      );
+      stars = riskCap;
+    }
+    const confCap = confidence < 0.25 ? 2 : confidence < 0.45 ? 3 : 5;
+    if (stars > confCap) {
+      caveats.push(
+        `Capped at ${confCap} stars because there was not much data to go on. Sparse evidence is not the same as good news.`
+      );
+      stars = confCap;
+    }
+    return { stars, caveats };
+  }
+  function rateAsset(snap) {
+    const closes = snap.history.map((c) => c.close).filter((c) => Number.isFinite(c) && c > 0);
+    const trend = scoreTrend(closes);
+    const analyst = scoreAnalyst(snap.consensus, snap.price);
+    const fundamentals = snap.kind === "crypto" ? { score: null, confidence: 0, reasons: ["Crypto has no company financials to assess."] } : scoreFundamentals(snap.fundamentals);
+    const risk = profileRisk(closes);
+    const entries = [];
+    if (trend.score != null) entries.push([trend.score, WEIGHTS.trend, trend.confidence]);
+    if (analyst.score != null) entries.push([analyst.score, WEIGHTS.analyst, analyst.confidence]);
+    if (fundamentals.score != null) {
+      entries.push([fundamentals.score, WEIGHTS.fundamentals, fundamentals.confidence]);
+    }
+    const missing = [];
+    if (trend.score == null) missing.push("price trend");
+    if (analyst.score == null) missing.push("analyst forecasts");
+    if (fundamentals.score == null) missing.push("company fundamentals");
+    let composite = 0;
+    let confidence = 0;
+    if (entries.length > 0) {
+      const wSum = entries.reduce((a, [, w]) => a + w, 0);
+      composite = entries.reduce((a, [s, w]) => a + s * w, 0) / wSum;
+      const cWeighted = entries.reduce((a, [, w, c]) => a + c * w, 0) / wSum;
+      confidence = cWeighted * (wSum / (WEIGHTS.trend + WEIGHTS.analyst + WEIGHTS.fundamentals));
+    }
+    const { stars, caveats } = starsFor(composite, risk.band, confidence);
+    if (missing.length > 0) {
+      caveats.push(
+        `Scored without ${missing.join(" or ")} \u2014 not counted against it, but the picture is partial.`
+      );
+    }
+    return {
+      id: snap.id,
+      symbol: snap.symbol,
+      name: snap.name,
+      kind: snap.kind,
+      stars,
+      composite,
+      trend,
+      analyst,
+      fundamentals,
+      risk,
+      caveats,
+      missing
+    };
+  }
+  function rankRatings(ratings, by = "stars") {
+    const val = (r) => {
+      switch (by) {
+        case "trend":
+          return r.trend.score ?? -1;
+        case "analyst":
+          return r.analyst.score ?? -1;
+        case "fundamentals":
+          return r.fundamentals.score ?? -1;
+        case "risk":
+          return -BAND_ORDER.indexOf(r.risk.band);
+        default:
+          return r.stars * 1e3 + r.composite;
+      }
+    };
+    return [...ratings].sort((a, b) => {
+      const d = val(b) - val(a);
+      if (d !== 0) return d;
+      return (b.trend.score ?? -1) - (a.trend.score ?? -1);
+    });
+  }
+
+  // src/providers.ts
+  var ProviderError = class extends Error {
+    constructor(message, provider) {
+      super(message);
+      this.provider = provider;
+      this.name = "ProviderError";
+    }
+    provider;
+  };
+  async function getJson(url, provider) {
+    let res;
+    try {
+      res = await fetch(url);
+    } catch {
+      throw new ProviderError(`Could not reach ${provider}. Check the connection.`, provider);
+    }
+    if (res.status === 429) {
+      throw new ProviderError(`${provider} rate limit hit \u2014 wait a minute and refresh.`, provider);
+    }
+    if (!res.ok) {
+      throw new ProviderError(`${provider} returned ${res.status}.`, provider);
+    }
+    return await res.json();
+  }
+  function utcDay(ms) {
+    const d = new Date(ms);
+    return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  }
+  function sortDedupe(candles) {
+    const byDay = /* @__PURE__ */ new Map();
+    for (const c of candles) {
+      if (Number.isFinite(c.close) && c.close > 0) byDay.set(utcDay(c.t), c.close);
+    }
+    return [...byDay.entries()].sort((a, b) => a[0] - b[0]).map(([t, close]) => ({ t, close }));
+  }
+  var CG = "https://api.coingecko.com/api/v3";
+  async function fetchCrypto(id, vs) {
+    const chart = await getJson(
+      `${CG}/coins/${encodeURIComponent(id)}/market_chart?vs_currency=${encodeURIComponent(vs)}&days=365&interval=daily`,
+      "CoinGecko"
+    );
+    const raw = Array.isArray(chart.prices) ? chart.prices : [];
+    const history = sortDedupe(raw.map(([t, close]) => ({ t, close })));
+    const lastCandle = history[history.length - 1];
+    if (!lastCandle) throw new ProviderError(`CoinGecko returned no prices for "${id}".`, "CoinGecko");
+    return {
+      id,
+      symbol: id.toUpperCase(),
+      name: id.replace(/-/g, " ").replace(/\b\w/g, (m) => m.toUpperCase()),
+      kind: "crypto",
+      currency: vs.toUpperCase(),
+      price: lastCandle.close,
+      history,
+      consensus: null,
+      fundamentals: null,
+      sources: ["CoinGecko (price history)"]
+    };
+  }
+  var TD = "https://api.twelvedata.com";
+  async function fetchEquityHistory(symbol, key) {
+    const data = await getJson(
+      `${TD}/time_series?symbol=${encodeURIComponent(symbol)}&interval=1day&outputsize=400&apikey=${encodeURIComponent(key)}`,
+      "Twelve Data"
+    );
+    if (data.status === "error") {
+      throw new ProviderError(data.message ?? `Twelve Data rejected "${symbol}".`, "Twelve Data");
+    }
+    const values = Array.isArray(data.values) ? data.values : [];
+    const history = sortDedupe(
+      values.map((v) => ({ t: Date.parse(`${v.datetime}T00:00:00Z`), close: Number(v.close) }))
+    );
+    if (history.length === 0) {
+      throw new ProviderError(`No price history returned for "${symbol}".`, "Twelve Data");
+    }
+    return {
+      history,
+      currency: data.meta?.currency ?? "USD",
+      name: data.meta?.symbol ?? symbol
+    };
+  }
+  var FH = "https://finnhub.io/api/v1";
+  async function fetchConsensus(symbol, key) {
+    try {
+      const rows = await getJson(
+        `${FH}/stock/recommendation-trends?symbol=${encodeURIComponent(symbol)}&token=${encodeURIComponent(key)}`,
+        "Finnhub"
+      );
+      if (!Array.isArray(rows) || rows.length === 0) return null;
+      const latest = [...rows].sort((a, b) => (b.period ?? "").localeCompare(a.period ?? ""))[0];
+      if (!latest) return null;
+      const consensus = {
+        strongBuy: latest.strongBuy ?? 0,
+        buy: latest.buy ?? 0,
+        hold: latest.hold ?? 0,
+        sell: latest.sell ?? 0,
+        strongSell: latest.strongSell ?? 0,
+        targetMean: null,
+        targetCount: null
+      };
+      try {
+        const pt = await getJson(
+          `${FH}/stock/price-target?symbol=${encodeURIComponent(symbol)}&token=${encodeURIComponent(key)}`,
+          "Finnhub"
+        );
+        if (typeof pt.targetMean === "number" && pt.targetMean > 0) {
+          consensus.targetMean = pt.targetMean;
+          consensus.targetCount = pt.numberOfAnalysts ?? null;
+        }
+      } catch {
+      }
+      return consensus;
+    } catch {
+      return null;
+    }
+  }
+  async function fetchFundamentals(symbol, key) {
+    try {
+      const data = await getJson(
+        `${FH}/stock/metric?symbol=${encodeURIComponent(symbol)}&metric=all&token=${encodeURIComponent(key)}`,
+        "Finnhub"
+      );
+      const m = data.metric;
+      if (!m || typeof m !== "object") return null;
+      const num = (k) => {
+        const v = m[k];
+        return typeof v === "number" && Number.isFinite(v) ? v : null;
+      };
+      const frac = (k) => {
+        const v = num(k);
+        return v == null ? null : v / 100;
+      };
+      const f = {
+        revenueGrowthYoY: frac("revenueGrowthTTMYoy"),
+        epsGrowthYoY: frac("epsGrowthTTMYoy"),
+        netMargin: frac("netProfitMarginTTM"),
+        returnOnEquity: frac("roeTTM"),
+        debtToEquity: num("totalDebt/totalEquityQuarterly"),
+        peRatio: num("peTTM")
+      };
+      const any = Object.values(f).some((v) => v != null);
+      return any ? f : null;
+    } catch {
+      return null;
+    }
+  }
+  async function loadWatchlist(items, keys, vsCurrency, onProgress) {
+    const snapshots = [];
+    const failures = [];
+    let done = 0;
+    for (const item of items) {
+      onProgress?.(done, items.length, item.label ?? item.id);
+      try {
+        if (item.kind === "crypto") {
+          snapshots.push(await fetchCrypto(item.id, vsCurrency));
+        } else {
+          if (!keys.twelveData) {
+            throw new ProviderError(
+              "No Twelve Data key set \u2014 add one in Settings to track shares and funds.",
+              "Twelve Data"
+            );
+          }
+          const { history, currency, name } = await fetchEquityHistory(item.id, keys.twelveData);
+          const lastCandle = history[history.length - 1];
+          if (!lastCandle) throw new ProviderError("Empty price history.", "Twelve Data");
+          const sources = ["Twelve Data (price history)"];
+          let consensus = null;
+          let fundamentals = null;
+          if (keys.finnhub) {
+            consensus = await fetchConsensus(item.id, keys.finnhub);
+            fundamentals = await fetchFundamentals(item.id, keys.finnhub);
+            if (consensus) sources.push("Finnhub (analyst recommendations)");
+            if (fundamentals) sources.push("Finnhub (company financials)");
+          }
+          snapshots.push({
+            id: item.id,
+            symbol: item.id,
+            name: item.label ?? name,
+            kind: item.kind,
+            currency,
+            price: lastCandle.close,
+            history,
+            consensus,
+            fundamentals,
+            sources
+          });
+        }
+      } catch (err) {
+        failures.push({
+          id: item.label ?? item.id,
+          message: err instanceof Error ? err.message : String(err)
+        });
+      }
+      done++;
+      onProgress?.(done, items.length, item.label ?? item.id);
+      if (item.kind !== "crypto" && done < items.length) {
+        await new Promise((r) => setTimeout(r, 8e3));
+      }
+    }
+    return { snapshots, failures };
+  }
+  return __toCommonJS(entry_exports);
+})();
+</script>
+<script>
+(function () {
+  "use strict";
+
+  // -------------------------------------------------------------------------------------------
+  // Storage. Keys are prefixed `mkt_` and discovered by prefix, never hardcoded in a backup list.
+  // -------------------------------------------------------------------------------------------
+  var K_WATCH = "mkt_watchlist_v1";
+  var K_KEYS = "mkt_keys_v1";
+  var K_CUR = "mkt_currency_v1";
+  var K_SORT = "mkt_sort_v1";
+  var K_CACHE = "mkt_cache_v1";
+  var K_THEME = "mkt_theme_v1";
+
+  var DEFAULT_WATCH = [
+    { kind: "crypto", id: "bitcoin", label: "Bitcoin" },
+    { kind: "crypto", id: "ethereum", label: "Ethereum" }
+  ];
+
+  function read(key, fallback) {
+    try {
+      var raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : fallback;
+    } catch (e) { return fallback; }
+  }
+  function write(key, value) {
+    try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) { /* private mode */ }
+  }
+
+  var state = {
+    watch: read(K_WATCH, DEFAULT_WATCH),
+    keys: read(K_KEYS, {}),
+    currency: read(K_CUR, "gbp"),
+    sort: read(K_SORT, "stars"),
+    ratings: [],
+    failures: [],
+    loading: false
+  };
+
+  function $(id) { return document.getElementById(id); }
+  function esc(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  }
+
+  // -------------------------------------------------------------------------------------------
+  // Theme. Applied before paint by the inline head script; this only handles the toggle.
+  // -------------------------------------------------------------------------------------------
+  $("themeBtn").addEventListener("click", function () {
+    var cur = document.documentElement.getAttribute("data-theme");
+    var next = cur === "dark" ? "light" : cur === "light" ? "" : "dark";
+    if (next) document.documentElement.setAttribute("data-theme", next);
+    else document.documentElement.removeAttribute("data-theme");
+    write(K_THEME, next);
+  });
+
+  // -------------------------------------------------------------------------------------------
+  // Rendering
+  // -------------------------------------------------------------------------------------------
+  function starHtml(n) {
+    var out = "";
+    for (var i = 1; i <= 5; i++) {
+      out += i <= n ? "<span>★</span>" : '<span class="off">★</span>';
+    }
+    return '<span class="stars" title="' + n + ' out of 5">' + out + "</span>";
+  }
+
+  function money(v, currency) {
+    if (v == null || !isFinite(v)) return "—";
+    var digits = v < 1 ? 6 : v < 100 ? 2 : 2;
+    try {
+      return new Intl.NumberFormat(undefined, {
+        style: "currency", currency: (currency || "USD").toUpperCase(),
+        maximumFractionDigits: digits, minimumFractionDigits: v < 1 ? 2 : 2
+      }).format(v);
+    } catch (e) {
+      return v.toFixed(digits);
+    }
+  }
+
+  function pctText(x) {
+    if (x == null || !isFinite(x)) return "—";
+    return (x >= 0 ? "+" : "") + (x * 100).toFixed(2) + "%";
+  }
+
+  /** Percentage move over the last `days` sessions of the snapshot's own history. */
+  function recentMove(snap, days) {
+    var h = snap.history;
+    if (!h || h.length < days + 1) return null;
+    var from = h[h.length - 1 - days].close;
+    var to = h[h.length - 1].close;
+    if (!(from > 0)) return null;
+    return to / from - 1;
+  }
+
+  function barHtml(label, pillar) {
+    if (!pillar || pillar.score == null) {
+      // ⚠️ An unavailable pillar renders as a hatched, italic "n/a" — NEVER as an empty bar. An
+      // empty bar reads as a score of zero, which is the exact misreading the engine's null
+      // handling exists to prevent, reintroduced at the last possible moment in the UI.
+      return '<div class="bar na"><span class="lbl">' + esc(label) +
+        '</span><span class="track"></span><span class="num">n/a</span></div>';
+    }
+    var v = Math.round(pillar.score);
+    return '<div class="bar"><span class="lbl">' + esc(label) +
+      '</span><span class="track"><span class="fill" style="width:' + v + '%"></span></span>' +
+      '<span class="num">' + v + "</span></div>";
+  }
+
+  function listHtml(reasons) {
+    if (!reasons || !reasons.length) return "";
+    return "<ul>" + reasons.map(function (r) { return "<li>" + esc(r) + "</li>"; }).join("") + "</ul>";
+  }
+
+  function cardHtml(rating, snap, index) {
+    var move = recentMove(snap, 1);
+    var move30 = recentMove(snap, 30);
+    var cls = move == null ? "flat" : move > 0 ? "up" : move < 0 ? "down" : "flat";
+    var risk = rating.risk.band;
+
+    var html = '<div class="card">';
+    html += '<div class="rowtop">';
+    html += '<div class="rank">' + (index + 1) + "</div>";
+    html += '<div class="ident"><div class="sym">' + esc(rating.symbol) + "</div>";
+    html += '<div class="nm">' + esc(rating.name) + "</div></div>";
+    html += '<div class="px"><div class="val">' + esc(money(snap.price, snap.currency)) + "</div>";
+    html += '<div class="chg ' + cls + '">' + esc(pctText(move)) + " today</div></div>";
+    html += "</div>";
+
+    html += '<div class="verdict">' + starHtml(rating.stars);
+    html += '<span class="pill ' + risk + '">' + esc(risk.replace("-", " ")) + " risk</span>";
+    html += '<span class="kind">' + esc(rating.kind) + "</span>";
+    if (move30 != null) {
+      html += '<span class="kind">30d ' + esc(pctText(move30)) + "</span>";
+    }
+    html += "</div>";
+
+    html += '<div class="bars">';
+    html += barHtml("Trend", rating.trend);
+    html += barHtml("Forecasts", rating.analyst);
+    html += barHtml("Business", rating.fundamentals);
+    html += "</div>";
+
+    html += '<details class="more"><summary>Show the working</summary><div class="working">';
+    html += "<h4>Overall</h4><ul><li>Composite score " + Math.round(rating.composite) +
+      "/100 across the pillars that had data, giving " + rating.stars + " star" +
+      (rating.stars === 1 ? "" : "s") + ".</li></ul>";
+    if (rating.caveats.length) {
+      html += rating.caveats.map(function (c) {
+        return '<div class="caveat">' + esc(c) + "</div>";
+      }).join("");
+    }
+    html += "<h4>Trend</h4>" + listHtml(rating.trend.reasons);
+    html += "<h4>Published forecasts</h4>" + listHtml(rating.analyst.reasons);
+    html += "<h4>Business data</h4>" + listHtml(rating.fundamentals.reasons);
+    html += "<h4>Risk</h4>" + listHtml(rating.risk.reasons);
+    if (snap.sources && snap.sources.length) {
+      html += '<div class="srcs">Sources: ' + esc(snap.sources.join("; ")) +
+        ". Price history covers " + snap.history.length + " sessions.</div>";
+    }
+    html += "</div></details>";
+    html += "</div>";
+    return html;
+  }
+
+  function render() {
+    var list = $("list");
+
+    if (state.loading) {
+      list.innerHTML = '<div class="status"><span class="spin"></span> ' + esc(state.loadingMsg || "Loading…") + "</div>";
+      return;
+    }
+
+    if (!state.watch.length) {
+      list.innerHTML = '<div class="empty">Your watchlist is empty. Open settings (⚙) to add something.</div>';
+      return;
+    }
+
+    var html = "";
+    state.failures.forEach(function (f) {
+      html += '<div class="fail"><b>' + esc(f.id) + "</b> — " + esc(f.message) + "</div>";
+    });
+
+    if (!state.ratings.length) {
+      html += '<div class="empty">Nothing loaded yet. Tap ↻ to fetch prices.</div>';
+      list.innerHTML = html;
+      return;
+    }
+
+    var ranked = MK.rankRatings(state.ratings.map(function (r) { return r.rating; }), state.sort);
+    ranked.forEach(function (rating, i) {
+      var found = null;
+      for (var j = 0; j < state.ratings.length; j++) {
+        if (state.ratings[j].rating.id === rating.id) { found = state.ratings[j].snap; break; }
+      }
+      if (found) html += cardHtml(rating, found, i);
+    });
+
+    list.innerHTML = html;
+  }
+
+  // -------------------------------------------------------------------------------------------
+  // Loading
+  // -------------------------------------------------------------------------------------------
+  function rateAll(snapshots) {
+    return snapshots.map(function (snap) {
+      return { snap: snap, rating: MK.rateAsset(snap) };
+    });
+  }
+
+  function setAsOf(ts) {
+    var el = $("asof");
+    if (!ts) { el.textContent = "not loaded yet"; return; }
+    var d = new Date(ts);
+    el.textContent = "as of " + d.toLocaleString(undefined, {
+      day: "numeric", month: "short", hour: "2-digit", minute: "2-digit"
+    });
+  }
+
+  function restoreCache() {
+    var cached = read(K_CACHE, null);
+    if (!cached || !cached.snapshots) return false;
+    try {
+      state.ratings = rateAll(cached.snapshots);
+      state.failures = cached.failures || [];
+      setAsOf(cached.ts);
+      return true;
+    } catch (e) { return false; }
+  }
+
+  async function refresh() {
+    if (state.loading) return;
+    state.loading = true;
+    state.loadingMsg = "Loading…";
+    $("refBtn").disabled = true;
+    render();
+
+    try {
+      var result = await MK.loadWatchlist(
+        state.watch, state.keys, state.currency,
+        function (done, total, label) {
+          state.loadingMsg = "Loading " + label + " (" + (done + 1) + " of " + total + ")…";
+          render();
+        }
+      );
+      state.ratings = rateAll(result.snapshots);
+      state.failures = result.failures;
+      var ts = Date.now();
+      setAsOf(ts);
+      // ⚠️ Cache the SNAPSHOTS, not the ratings. Re-scoring on load costs nothing and means an
+      // engine change takes effect immediately; caching verdicts would leave yesterday's arithmetic
+      // on screen with no way to tell it apart from today's.
+      write(K_CACHE, { ts: ts, snapshots: result.snapshots, failures: result.failures });
+    } catch (err) {
+      state.failures = [{ id: "Load", message: err && err.message ? err.message : String(err) }];
+    } finally {
+      state.loading = false;
+      $("refBtn").disabled = false;
+      render();
+    }
+  }
+
+  // -------------------------------------------------------------------------------------------
+  // Settings sheet
+  // -------------------------------------------------------------------------------------------
+  function renderWatchlist() {
+    var wl = $("wl");
+    if (!state.watch.length) {
+      wl.innerHTML = '<div class="wl-row"><span class="t" style="color:var(--ink-faint)">nothing yet</span></div>';
+      return;
+    }
+    wl.innerHTML = state.watch.map(function (w, i) {
+      return '<div class="wl-row"><span class="t">' + esc(w.id) + "</span>" +
+        '<span class="k">' + esc(w.kind) + "</span>" +
+        '<button data-rm="' + i + '" aria-label="Remove">×</button></div>';
+    }).join("");
+    Array.prototype.forEach.call(wl.querySelectorAll("[data-rm]"), function (btn) {
+      btn.addEventListener("click", function () {
+        state.watch.splice(Number(btn.getAttribute("data-rm")), 1);
+        renderWatchlist();
+      });
+    });
+  }
+
+  function openSettings() {
+    $("curSel").value = state.currency;
+    $("tdKey").value = state.keys.twelveData || "";
+    $("fhKey").value = state.keys.finnhub || "";
+    renderWatchlist();
+    $("setOv").classList.add("on");
+  }
+  function closeSettings() { $("setOv").classList.remove("on"); }
+
+  $("setBtn").addEventListener("click", openSettings);
+  $("closeBtn").addEventListener("click", closeSettings);
+  $("setOv").addEventListener("click", function (e) {
+    if (e.target === $("setOv")) closeSettings();
+  });
+
+  $("addBtn").addEventListener("click", function () {
+    var id = $("addId").value.trim();
+    if (!id) return;
+    var kind = $("addKind").value;
+    // CoinGecko ids are lowercase slugs; tickers are conventionally upper. Normalising here stops
+    // "Bitcoin" and "bitcoin" becoming two rows that fetch the same asset twice.
+    var norm = kind === "crypto" ? id.toLowerCase().replace(/\s+/g, "-") : id.toUpperCase();
+    var dupe = state.watch.some(function (w) { return w.id === norm && w.kind === kind; });
+    if (!dupe) state.watch.push({ kind: kind, id: norm });
+    $("addId").value = "";
+    renderWatchlist();
+  });
+  $("addId").addEventListener("keydown", function (e) {
+    if (e.key === "Enter") { e.preventDefault(); $("addBtn").click(); }
+  });
+
+  $("saveBtn").addEventListener("click", function () {
+    state.currency = $("curSel").value;
+    var td = $("tdKey").value.trim();
+    var fh = $("fhKey").value.trim();
+    state.keys = {};
+    if (td) state.keys.twelveData = td;
+    if (fh) state.keys.finnhub = fh;
+    write(K_WATCH, state.watch);
+    write(K_KEYS, state.keys);
+    write(K_CUR, state.currency);
+    closeSettings();
+    refresh();
+  });
+
+  $("refBtn").addEventListener("click", refresh);
+
+  Array.prototype.forEach.call(document.querySelectorAll("#chips .chip"), function (chip) {
+    chip.addEventListener("click", function () {
+      state.sort = chip.getAttribute("data-sort");
+      write(K_SORT, state.sort);
+      Array.prototype.forEach.call(document.querySelectorAll("#chips .chip"), function (c) {
+        c.setAttribute("aria-pressed", String(c === chip));
+      });
+      render();
+    });
+  });
+
+  // -------------------------------------------------------------------------------------------
+  // Boot
+  // -------------------------------------------------------------------------------------------
+  Array.prototype.forEach.call(document.querySelectorAll("#chips .chip"), function (c) {
+    c.setAttribute("aria-pressed", String(c.getAttribute("data-sort") === state.sort));
+  });
+
+  var hadCache = restoreCache();
+  render();
+  // Only auto-fetch on a cold start. The free tiers are 8 requests a minute, so refetching on every
+  // open would burn the budget before the user has done anything.
+  if (!hadCache) refresh();
+})();
+</script>
+</body>
+</html>

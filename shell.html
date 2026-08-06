@@ -1,0 +1,636 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0f1419">
+<title>Market Watch</title>
+<script>
+// ⚠️ INLINE, IN <head>, BEFORE ANY PAINT — and all three of those are load-bearing. A saved theme
+// restored from the main script at the end of <body> still lets the first paint use the system
+// scheme, which flashes the wrong colours and (on an iOS home-screen app) latches the status-bar
+// strip to a colour the app then never uses. Same rule as the running app's theme restore.
+(function () {
+  try {
+    var t = JSON.parse(localStorage.getItem("mkt_theme_v1") || '""');
+    if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t);
+  } catch (e) { /* private mode — fall through to the system scheme */ }
+})();
+</script>
+<style>
+:root {
+  color-scheme: light dark;
+  --bg: #f4f6f8; --surface: #ffffff; --surface-2: #eef1f5; --line: #dbe1e8;
+  --ink: #101820; --ink-soft: #4a5763; --ink-faint: #78868f;
+  --accent: #1f6feb; --accent-ink: #ffffff;
+  --up: #0f7a52; --down: #c0392b; --flat: #7a8790;
+  --star: #d99a00;
+  --risk-low: #0f7a52; --risk-moderate: #b07d00; --risk-high: #c9591f; --risk-very-high: #b3261e;
+  --shadow: 0 1px 2px rgba(16,24,32,.06), 0 6px 20px rgba(16,24,32,.07);
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1419; --surface: #171e26; --surface-2: #1e2731; --line: #2b3742;
+    --ink: #e8eef4; --ink-soft: #a7b4c0; --ink-faint: #74848f;
+    --accent: #4d92ff; --accent-ink: #06121f;
+    --up: #35c48b; --down: #ef6a5a; --flat: #7f8d97;
+    --star: #f0b429;
+    --risk-low: #35c48b; --risk-moderate: #e0ab2e; --risk-high: #ef8a52; --risk-very-high: #ef6a5a;
+    --shadow: 0 1px 2px rgba(0,0,0,.35), 0 8px 26px rgba(0,0,0,.4);
+  }
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f4f6f8; --surface: #ffffff; --surface-2: #eef1f5; --line: #dbe1e8;
+  --ink: #101820; --ink-soft: #4a5763; --ink-faint: #78868f;
+  --accent: #1f6feb; --accent-ink: #ffffff;
+  --up: #0f7a52; --down: #c0392b; --flat: #7a8790;
+  --star: #d99a00;
+  --risk-low: #0f7a52; --risk-moderate: #b07d00; --risk-high: #c9591f; --risk-very-high: #b3261e;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0f1419; --surface: #171e26; --surface-2: #1e2731; --line: #2b3742;
+  --ink: #e8eef4; --ink-soft: #a7b4c0; --ink-faint: #74848f;
+  --accent: #4d92ff; --accent-ink: #06121f;
+  --up: #35c48b; --down: #ef6a5a; --flat: #7f8d97;
+  --star: #f0b429;
+  --risk-low: #35c48b; --risk-moderate: #e0ab2e; --risk-high: #ef8a52; --risk-very-high: #ef6a5a;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--sans);
+  font-size: 16px; line-height: 1.45; -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 760px; margin: 0 auto; padding: 0 16px 64px; }
+
+/* ---- top bar ---- */
+.topbar {
+  position: sticky; top: 0; z-index: 20; background: var(--bg);
+  border-bottom: 1px solid var(--line);
+  padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 12px;
+  display: flex; align-items: center; gap: 12px;
+}
+.topbar h1 { font-size: 18px; margin: 0; letter-spacing: -.01em; flex: 1; }
+.topbar .sub { display: block; font-size: 12px; font-weight: 400; color: var(--ink-faint); }
+.iconbtn {
+  border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+  border-radius: 10px; width: 38px; height: 38px; font-size: 16px; cursor: pointer;
+  display: grid; place-items: center;
+}
+.iconbtn:active { transform: scale(.96); }
+.iconbtn[disabled] { opacity: .5; cursor: default; }
+
+/* ---- standing notice ---- */
+.notice {
+  margin: 16px 0; padding: 12px 14px; border-radius: 12px;
+  background: var(--surface-2); border: 1px solid var(--line);
+  font-size: 13px; color: var(--ink-soft);
+}
+.notice strong { color: var(--ink); }
+
+/* ---- sort chips ---- */
+.chips { display: flex; gap: 8px; overflow-x: auto; padding: 4px 0 12px; scrollbar-width: none; }
+.chips::-webkit-scrollbar { display: none; }
+.chip {
+  flex: 0 0 auto; padding: 7px 13px; border-radius: 999px; font-size: 13px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--surface); color: var(--ink-soft);
+}
+.chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+
+/* ---- cards ---- */
+.card {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+  padding: 14px; margin-bottom: 12px; box-shadow: var(--shadow);
+}
+.rowtop { display: flex; align-items: flex-start; gap: 12px; }
+.rank {
+  font-family: var(--mono); font-size: 12px; color: var(--ink-faint);
+  min-width: 20px; padding-top: 3px;
+}
+.ident { flex: 1; min-width: 0; }
+.sym { font-weight: 650; font-size: 16px; letter-spacing: -.01em; }
+.nm { font-size: 13px; color: var(--ink-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.px { text-align: right; }
+.px .val { font-family: var(--mono); font-size: 15px; font-weight: 600; }
+.px .chg { font-size: 12px; font-family: var(--mono); }
+.up { color: var(--up); } .down { color: var(--down); } .flat { color: var(--flat); }
+
+.verdict { display: flex; align-items: center; gap: 10px; margin: 12px 0 4px; flex-wrap: wrap; }
+.stars { font-size: 17px; letter-spacing: 2px; color: var(--star); }
+.stars .off { color: var(--line); }
+.pill {
+  font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 999px;
+  border: 1px solid currentColor; text-transform: uppercase; letter-spacing: .04em;
+}
+.pill.low { color: var(--risk-low); } .pill.moderate { color: var(--risk-moderate); }
+.pill.high { color: var(--risk-high); } .pill.very-high { color: var(--risk-very-high); }
+.kind { font-size: 11px; color: var(--ink-faint); border: 1px solid var(--line); border-radius: 999px; padding: 3px 8px; }
+
+.bars { margin-top: 10px; display: grid; gap: 7px; }
+.bar { display: grid; grid-template-columns: 96px 1fr 38px; gap: 10px; align-items: center; font-size: 12px; }
+.bar .lbl { color: var(--ink-soft); }
+.bar .track { height: 7px; border-radius: 4px; background: var(--surface-2); overflow: hidden; border: 1px solid var(--line); }
+/* ⚠️ `display: block` is load-bearing. `.track` is a grid ITEM so it gets blockified automatically,
+   but `.fill` is only its child — left inline, both `width` and `height` are ignored and every bar
+   renders empty while the number beside it reads 82. It looked fine in the DOM and in the unit
+   tests; only a screenshot showed it. Assert rendered geometry, not attributes. */
+.bar .fill { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
+.bar .num { font-family: var(--mono); text-align: right; color: var(--ink-soft); }
+.bar.na .lbl, .bar.na .num { color: var(--ink-faint); font-style: italic; }
+.bar.na .track { background: repeating-linear-gradient(135deg, var(--surface-2), var(--surface-2) 4px, transparent 4px, transparent 8px); }
+
+.more { margin-top: 10px; }
+.more summary {
+  cursor: pointer; font-size: 13px; color: var(--accent); list-style: none;
+  padding: 4px 0; user-select: none;
+}
+.more summary::-webkit-details-marker { display: none; }
+.more summary::before { content: "▸ "; }
+.more[open] summary::before { content: "▾ "; }
+.working { border-top: 1px solid var(--line); margin-top: 8px; padding-top: 10px; font-size: 13px; }
+.working h4 { margin: 12px 0 5px; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-faint); }
+.working h4:first-child { margin-top: 0; }
+.working ul { margin: 0; padding-left: 18px; color: var(--ink-soft); }
+.working li { margin: 3px 0; }
+.working .caveat { color: var(--ink); background: var(--surface-2); border-left: 3px solid var(--risk-moderate); padding: 8px 10px; border-radius: 0 8px 8px 0; margin: 6px 0; }
+.srcs { font-size: 11px; color: var(--ink-faint); margin-top: 10px; }
+
+/* ---- sheet ---- */
+.sheet-ov {
+  position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 40;
+  display: none; align-items: flex-end; justify-content: center;
+}
+.sheet-ov.on { display: flex; }
+.sheet {
+  background: var(--surface); width: 100%; max-width: 560px; max-height: 88vh; overflow-y: auto;
+  border-radius: 16px 16px 0 0; padding: 18px 18px calc(24px + env(safe-area-inset-bottom, 0px));
+}
+.sheet h2 { margin: 0 0 4px; font-size: 18px; }
+.sheet .hint { font-size: 13px; color: var(--ink-faint); margin: 0 0 16px; }
+label { display: block; font-size: 13px; font-weight: 600; margin: 14px 0 5px; }
+label .note { display: block; font-weight: 400; color: var(--ink-faint); font-size: 12px; margin-top: 2px; }
+input, select {
+  width: 100%; font-size: 16px; font-family: inherit; padding: 10px 12px;
+  border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); color: var(--ink);
+}
+input[type="text"] { font-family: var(--mono); }
+.btn {
+  width: 100%; padding: 12px; border-radius: 11px; border: none; font-size: 15px; font-weight: 600;
+  background: var(--accent); color: var(--accent-ink); cursor: pointer; margin-top: 18px;
+}
+.btn.ghost { background: transparent; color: var(--ink-soft); border: 1px solid var(--line); margin-top: 8px; }
+.wl { margin-top: 8px; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.wl-row { display: flex; align-items: center; gap: 8px; padding: 9px 11px; border-bottom: 1px solid var(--line); font-size: 14px; }
+.wl-row:last-child { border-bottom: none; }
+.wl-row .t { flex: 1; font-family: var(--mono); }
+.wl-row .k { font-size: 11px; color: var(--ink-faint); }
+.wl-row button { border: none; background: transparent; color: var(--down); cursor: pointer; font-size: 18px; padding: 0 4px; }
+.addrow { display: grid; grid-template-columns: 1fr 108px 44px; gap: 8px; margin-top: 8px; }
+.addrow button { border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); border-radius: 10px; font-size: 20px; cursor: pointer; }
+
+/* ---- states ---- */
+.empty, .status { text-align: center; padding: 40px 20px; color: var(--ink-faint); font-size: 14px; }
+.fail { background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--down); border-radius: 0 10px 10px 0; padding: 10px 12px; margin-bottom: 10px; font-size: 13px; }
+.fail b { color: var(--down); }
+.spin { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; vertical-align: -2px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.foot { text-align: center; font-size: 11px; color: var(--ink-faint); padding: 24px 0 0; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>Market Watch<span class="sub" id="asof">not loaded yet</span></h1>
+  <button class="iconbtn" id="themeBtn" title="Light / dark" aria-label="Toggle theme">◐</button>
+  <button class="iconbtn" id="setBtn" title="Settings" aria-label="Settings">⚙</button>
+  <button class="iconbtn" id="refBtn" title="Refresh" aria-label="Refresh">↻</button>
+</div>
+
+<div class="wrap">
+  <div class="notice">
+    <strong>These stars are not advice, and they are not a forecast.</strong>
+    They count how many measurable signals currently line up — past price behaviour, published
+    analyst views, and reported company financials. Every star can be traced to its arithmetic:
+    open <em>Show the working</em> on any row. Momentum is also the mechanism by which people buy
+    tops, so the risk band is a hard cap, never an average.
+  </div>
+
+  <div class="chips" id="chips">
+    <button class="chip" data-sort="stars" aria-pressed="true">Overall</button>
+    <button class="chip" data-sort="trend" aria-pressed="false">Trending up</button>
+    <button class="chip" data-sort="analyst" aria-pressed="false">Forecast growth</button>
+    <button class="chip" data-sort="fundamentals" aria-pressed="false">Business data</button>
+    <button class="chip" data-sort="risk" aria-pressed="false">Lowest risk</button>
+  </div>
+
+  <div id="list"></div>
+  <div class="foot">Build __BUILD__ · data from CoinGecko, Twelve Data and Finnhub · nothing leaves this device except calls to those APIs</div>
+</div>
+
+<div class="sheet-ov" id="setOv">
+  <div class="sheet">
+    <h2>Settings</h2>
+    <p class="hint">Keys are stored only in this browser. They are sent to their own API and nowhere else.</p>
+
+    <label>Show prices in
+      <span class="note">Applies to crypto. Shares are priced in their own market's currency.</span>
+    </label>
+    <select id="curSel">
+      <option value="gbp">GBP £</option>
+      <option value="usd">USD $</option>
+      <option value="eur">EUR €</option>
+    </select>
+
+    <label>Twelve Data API key
+      <span class="note">Free at twelvedata.com — needed for shares and funds. Crypto works without any key.</span>
+    </label>
+    <input type="text" id="tdKey" placeholder="paste key" autocomplete="off" spellcheck="false">
+
+    <label>Finnhub API key
+      <span class="note">Free at finnhub.io — adds analyst forecasts and company financials. Optional.</span>
+    </label>
+    <input type="text" id="fhKey" placeholder="paste key" autocomplete="off" spellcheck="false">
+
+    <label>Watchlist</label>
+    <div class="wl" id="wl"></div>
+    <div class="addrow">
+      <input type="text" id="addId" placeholder="AAPL or bitcoin" autocomplete="off" spellcheck="false">
+      <select id="addKind">
+        <option value="equity">Share</option>
+        <option value="etf">Fund / ETF</option>
+        <option value="crypto">Crypto</option>
+      </select>
+      <button id="addBtn" aria-label="Add">+</button>
+    </div>
+
+    <button class="btn" id="saveBtn">Save and refresh</button>
+    <button class="btn ghost" id="closeBtn">Close</button>
+  </div>
+</div>
+
+<script>/*__BUNDLE__*/</script>
+<script>
+(function () {
+  "use strict";
+
+  // -------------------------------------------------------------------------------------------
+  // Storage. Keys are prefixed `mkt_` and discovered by prefix, never hardcoded in a backup list.
+  // -------------------------------------------------------------------------------------------
+  var K_WATCH = "mkt_watchlist_v1";
+  var K_KEYS = "mkt_keys_v1";
+  var K_CUR = "mkt_currency_v1";
+  var K_SORT = "mkt_sort_v1";
+  var K_CACHE = "mkt_cache_v1";
+  var K_THEME = "mkt_theme_v1";
+
+  var DEFAULT_WATCH = [
+    { kind: "crypto", id: "bitcoin", label: "Bitcoin" },
+    { kind: "crypto", id: "ethereum", label: "Ethereum" }
+  ];
+
+  function read(key, fallback) {
+    try {
+      var raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : fallback;
+    } catch (e) { return fallback; }
+  }
+  function write(key, value) {
+    try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) { /* private mode */ }
+  }
+
+  var state = {
+    watch: read(K_WATCH, DEFAULT_WATCH),
+    keys: read(K_KEYS, {}),
+    currency: read(K_CUR, "gbp"),
+    sort: read(K_SORT, "stars"),
+    ratings: [],
+    failures: [],
+    loading: false
+  };
+
+  function $(id) { return document.getElementById(id); }
+  function esc(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  }
+
+  // -------------------------------------------------------------------------------------------
+  // Theme. Applied before paint by the inline head script; this only handles the toggle.
+  // -------------------------------------------------------------------------------------------
+  $("themeBtn").addEventListener("click", function () {
+    var cur = document.documentElement.getAttribute("data-theme");
+    var next = cur === "dark" ? "light" : cur === "light" ? "" : "dark";
+    if (next) document.documentElement.setAttribute("data-theme", next);
+    else document.documentElement.removeAttribute("data-theme");
+    write(K_THEME, next);
+  });
+
+  // -------------------------------------------------------------------------------------------
+  // Rendering
+  // -------------------------------------------------------------------------------------------
+  function starHtml(n) {
+    var out = "";
+    for (var i = 1; i <= 5; i++) {
+      out += i <= n ? "<span>★</span>" : '<span class="off">★</span>';
+    }
+    return '<span class="stars" title="' + n + ' out of 5">' + out + "</span>";
+  }
+
+  function money(v, currency) {
+    if (v == null || !isFinite(v)) return "—";
+    var digits = v < 1 ? 6 : v < 100 ? 2 : 2;
+    try {
+      return new Intl.NumberFormat(undefined, {
+        style: "currency", currency: (currency || "USD").toUpperCase(),
+        maximumFractionDigits: digits, minimumFractionDigits: v < 1 ? 2 : 2
+      }).format(v);
+    } catch (e) {
+      return v.toFixed(digits);
+    }
+  }
+
+  function pctText(x) {
+    if (x == null || !isFinite(x)) return "—";
+    return (x >= 0 ? "+" : "") + (x * 100).toFixed(2) + "%";
+  }
+
+  /** Percentage move over the last `days` sessions of the snapshot's own history. */
+  function recentMove(snap, days) {
+    var h = snap.history;
+    if (!h || h.length < days + 1) return null;
+    var from = h[h.length - 1 - days].close;
+    var to = h[h.length - 1].close;
+    if (!(from > 0)) return null;
+    return to / from - 1;
+  }
+
+  function barHtml(label, pillar) {
+    if (!pillar || pillar.score == null) {
+      // ⚠️ An unavailable pillar renders as a hatched, italic "n/a" — NEVER as an empty bar. An
+      // empty bar reads as a score of zero, which is the exact misreading the engine's null
+      // handling exists to prevent, reintroduced at the last possible moment in the UI.
+      return '<div class="bar na"><span class="lbl">' + esc(label) +
+        '</span><span class="track"></span><span class="num">n/a</span></div>';
+    }
+    var v = Math.round(pillar.score);
+    return '<div class="bar"><span class="lbl">' + esc(label) +
+      '</span><span class="track"><span class="fill" style="width:' + v + '%"></span></span>' +
+      '<span class="num">' + v + "</span></div>";
+  }
+
+  function listHtml(reasons) {
+    if (!reasons || !reasons.length) return "";
+    return "<ul>" + reasons.map(function (r) { return "<li>" + esc(r) + "</li>"; }).join("") + "</ul>";
+  }
+
+  function cardHtml(rating, snap, index) {
+    var move = recentMove(snap, 1);
+    var move30 = recentMove(snap, 30);
+    var cls = move == null ? "flat" : move > 0 ? "up" : move < 0 ? "down" : "flat";
+    var risk = rating.risk.band;
+
+    var html = '<div class="card">';
+    html += '<div class="rowtop">';
+    html += '<div class="rank">' + (index + 1) + "</div>";
+    html += '<div class="ident"><div class="sym">' + esc(rating.symbol) + "</div>";
+    html += '<div class="nm">' + esc(rating.name) + "</div></div>";
+    html += '<div class="px"><div class="val">' + esc(money(snap.price, snap.currency)) + "</div>";
+    html += '<div class="chg ' + cls + '">' + esc(pctText(move)) + " today</div></div>";
+    html += "</div>";
+
+    html += '<div class="verdict">' + starHtml(rating.stars);
+    html += '<span class="pill ' + risk + '">' + esc(risk.replace("-", " ")) + " risk</span>";
+    html += '<span class="kind">' + esc(rating.kind) + "</span>";
+    if (move30 != null) {
+      html += '<span class="kind">30d ' + esc(pctText(move30)) + "</span>";
+    }
+    html += "</div>";
+
+    html += '<div class="bars">';
+    html += barHtml("Trend", rating.trend);
+    html += barHtml("Forecasts", rating.analyst);
+    html += barHtml("Business", rating.fundamentals);
+    html += "</div>";
+
+    html += '<details class="more"><summary>Show the working</summary><div class="working">';
+    html += "<h4>Overall</h4><ul><li>Composite score " + Math.round(rating.composite) +
+      "/100 across the pillars that had data, giving " + rating.stars + " star" +
+      (rating.stars === 1 ? "" : "s") + ".</li></ul>";
+    if (rating.caveats.length) {
+      html += rating.caveats.map(function (c) {
+        return '<div class="caveat">' + esc(c) + "</div>";
+      }).join("");
+    }
+    html += "<h4>Trend</h4>" + listHtml(rating.trend.reasons);
+    html += "<h4>Published forecasts</h4>" + listHtml(rating.analyst.reasons);
+    html += "<h4>Business data</h4>" + listHtml(rating.fundamentals.reasons);
+    html += "<h4>Risk</h4>" + listHtml(rating.risk.reasons);
+    if (snap.sources && snap.sources.length) {
+      html += '<div class="srcs">Sources: ' + esc(snap.sources.join("; ")) +
+        ". Price history covers " + snap.history.length + " sessions.</div>";
+    }
+    html += "</div></details>";
+    html += "</div>";
+    return html;
+  }
+
+  function render() {
+    var list = $("list");
+
+    if (state.loading) {
+      list.innerHTML = '<div class="status"><span class="spin"></span> ' + esc(state.loadingMsg || "Loading…") + "</div>";
+      return;
+    }
+
+    if (!state.watch.length) {
+      list.innerHTML = '<div class="empty">Your watchlist is empty. Open settings (⚙) to add something.</div>';
+      return;
+    }
+
+    var html = "";
+    state.failures.forEach(function (f) {
+      html += '<div class="fail"><b>' + esc(f.id) + "</b> — " + esc(f.message) + "</div>";
+    });
+
+    if (!state.ratings.length) {
+      html += '<div class="empty">Nothing loaded yet. Tap ↻ to fetch prices.</div>';
+      list.innerHTML = html;
+      return;
+    }
+
+    var ranked = MK.rankRatings(state.ratings.map(function (r) { return r.rating; }), state.sort);
+    ranked.forEach(function (rating, i) {
+      var found = null;
+      for (var j = 0; j < state.ratings.length; j++) {
+        if (state.ratings[j].rating.id === rating.id) { found = state.ratings[j].snap; break; }
+      }
+      if (found) html += cardHtml(rating, found, i);
+    });
+
+    list.innerHTML = html;
+  }
+
+  // -------------------------------------------------------------------------------------------
+  // Loading
+  // -------------------------------------------------------------------------------------------
+  function rateAll(snapshots) {
+    return snapshots.map(function (snap) {
+      return { snap: snap, rating: MK.rateAsset(snap) };
+    });
+  }
+
+  function setAsOf(ts) {
+    var el = $("asof");
+    if (!ts) { el.textContent = "not loaded yet"; return; }
+    var d = new Date(ts);
+    el.textContent = "as of " + d.toLocaleString(undefined, {
+      day: "numeric", month: "short", hour: "2-digit", minute: "2-digit"
+    });
+  }
+
+  function restoreCache() {
+    var cached = read(K_CACHE, null);
+    if (!cached || !cached.snapshots) return false;
+    try {
+      state.ratings = rateAll(cached.snapshots);
+      state.failures = cached.failures || [];
+      setAsOf(cached.ts);
+      return true;
+    } catch (e) { return false; }
+  }
+
+  async function refresh() {
+    if (state.loading) return;
+    state.loading = true;
+    state.loadingMsg = "Loading…";
+    $("refBtn").disabled = true;
+    render();
+
+    try {
+      var result = await MK.loadWatchlist(
+        state.watch, state.keys, state.currency,
+        function (done, total, label) {
+          state.loadingMsg = "Loading " + label + " (" + (done + 1) + " of " + total + ")…";
+          render();
+        }
+      );
+      state.ratings = rateAll(result.snapshots);
+      state.failures = result.failures;
+      var ts = Date.now();
+      setAsOf(ts);
+      // ⚠️ Cache the SNAPSHOTS, not the ratings. Re-scoring on load costs nothing and means an
+      // engine change takes effect immediately; caching verdicts would leave yesterday's arithmetic
+      // on screen with no way to tell it apart from today's.
+      write(K_CACHE, { ts: ts, snapshots: result.snapshots, failures: result.failures });
+    } catch (err) {
+      state.failures = [{ id: "Load", message: err && err.message ? err.message : String(err) }];
+    } finally {
+      state.loading = false;
+      $("refBtn").disabled = false;
+      render();
+    }
+  }
+
+  // -------------------------------------------------------------------------------------------
+  // Settings sheet
+  // -------------------------------------------------------------------------------------------
+  function renderWatchlist() {
+    var wl = $("wl");
+    if (!state.watch.length) {
+      wl.innerHTML = '<div class="wl-row"><span class="t" style="color:var(--ink-faint)">nothing yet</span></div>';
+      return;
+    }
+    wl.innerHTML = state.watch.map(function (w, i) {
+      return '<div class="wl-row"><span class="t">' + esc(w.id) + "</span>" +
+        '<span class="k">' + esc(w.kind) + "</span>" +
+        '<button data-rm="' + i + '" aria-label="Remove">×</button></div>';
+    }).join("");
+    Array.prototype.forEach.call(wl.querySelectorAll("[data-rm]"), function (btn) {
+      btn.addEventListener("click", function () {
+        state.watch.splice(Number(btn.getAttribute("data-rm")), 1);
+        renderWatchlist();
+      });
+    });
+  }
+
+  function openSettings() {
+    $("curSel").value = state.currency;
+    $("tdKey").value = state.keys.twelveData || "";
+    $("fhKey").value = state.keys.finnhub || "";
+    renderWatchlist();
+    $("setOv").classList.add("on");
+  }
+  function closeSettings() { $("setOv").classList.remove("on"); }
+
+  $("setBtn").addEventListener("click", openSettings);
+  $("closeBtn").addEventListener("click", closeSettings);
+  $("setOv").addEventListener("click", function (e) {
+    if (e.target === $("setOv")) closeSettings();
+  });
+
+  $("addBtn").addEventListener("click", function () {
+    var id = $("addId").value.trim();
+    if (!id) return;
+    var kind = $("addKind").value;
+    // CoinGecko ids are lowercase slugs; tickers are conventionally upper. Normalising here stops
+    // "Bitcoin" and "bitcoin" becoming two rows that fetch the same asset twice.
+    var norm = kind === "crypto" ? id.toLowerCase().replace(/\s+/g, "-") : id.toUpperCase();
+    var dupe = state.watch.some(function (w) { return w.id === norm && w.kind === kind; });
+    if (!dupe) state.watch.push({ kind: kind, id: norm });
+    $("addId").value = "";
+    renderWatchlist();
+  });
+  $("addId").addEventListener("keydown", function (e) {
+    if (e.key === "Enter") { e.preventDefault(); $("addBtn").click(); }
+  });
+
+  $("saveBtn").addEventListener("click", function () {
+    state.currency = $("curSel").value;
+    var td = $("tdKey").value.trim();
+    var fh = $("fhKey").value.trim();
+    state.keys = {};
+    if (td) state.keys.twelveData = td;
+    if (fh) state.keys.finnhub = fh;
+    write(K_WATCH, state.watch);
+    write(K_KEYS, state.keys);
+    write(K_CUR, state.currency);
+    closeSettings();
+    refresh();
+  });
+
+  $("refBtn").addEventListener("click", refresh);
+
+  Array.prototype.forEach.call(document.querySelectorAll("#chips .chip"), function (chip) {
+    chip.addEventListener("click", function () {
+      state.sort = chip.getAttribute("data-sort");
+      write(K_SORT, state.sort);
+      Array.prototype.forEach.call(document.querySelectorAll("#chips .chip"), function (c) {
+        c.setAttribute("aria-pressed", String(c === chip));
+      });
+      render();
+    });
+  });
+
+  // -------------------------------------------------------------------------------------------
+  // Boot
+  // -------------------------------------------------------------------------------------------
+  Array.prototype.forEach.call(document.querySelectorAll("#chips .chip"), function (c) {
+    c.setAttribute("aria-pressed", String(c.getAttribute("data-sort") === state.sort));
+  });
+
+  var hadCache = restoreCache();
+  render();
+  // Only auto-fetch on a cold start. The free tiers are 8 requests a minute, so refetching on every
+  // open would burn the budget before the user has done anything.
+  if (!hadCache) refresh();
+})();
+</script>
+</body>
+</html>
