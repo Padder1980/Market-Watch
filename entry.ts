@@ -8,6 +8,7 @@ export {
   scoreTrend,
   scoreAnalyst,
   scoreFundamentals,
+  scoreNetwork,
   profileRisk,
   starsFor,
   WEIGHTS,
@@ -18,13 +19,20 @@ export {
 } from "./src/score.ts";
 export type { SortKey } from "./src/score.ts";
 
-export { loadWatchlist, fetchCrypto, fetchEquityHistory, ProviderError } from "./src/providers.ts";
+export {
+  fetchBitcoinNetwork,
+  fetchCrypto,
+  fetchEquityHistory,
+  loadWatchlist,
+  ProviderError,
+} from "./src/providers.ts";
 export type { Keys, WatchItem, LoadResult } from "./src/providers.ts";
 
 export type {
   AssetKind,
   AssetSnapshot,
   Candle,
+  NetworkStats,
   Pillar,
   Rating,
   RiskBand,

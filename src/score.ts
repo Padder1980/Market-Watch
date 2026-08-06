@@ -26,6 +26,7 @@ import type {
   AnalystConsensus,
   AssetSnapshot,
   Fundamentals,
+  NetworkStats,
   Pillar,
   Rating,
   RiskBand,
@@ -45,8 +46,15 @@ import {
   worstDay,
 } from "./indicators.ts";
 
-/** Pillar weights in the composite. Trend is heaviest because it is the question asked first. */
-export const WEIGHTS = { trend: 0.45, analyst: 0.25, fundamentals: 0.3 } as const;
+/**
+ * Pillar weights in the composite. Trend is heaviest because it is the question asked first.
+ *
+ * ⚠️ `network` CARRIES EXACTLY THE SAME WEIGHT AS `fundamentals`, AND THAT IS LOAD-BEARING. The two
+ * are mutually exclusive — a company has accounts and no chain, a crypto asset has a chain and no
+ * accounts — so they occupy one slot between them. Equal weights keep the applicable total at 1.0
+ * for both kinds, which means the confidence denominator does not silently change with asset type.
+ */
+export const WEIGHTS = { trend: 0.45, analyst: 0.25, fundamentals: 0.3, network: 0.3 } as const;
 
 /**
  * Star thresholds on the 0–100 composite, before caps.
@@ -347,6 +355,76 @@ export function scoreFundamentals(f: Fundamentals | null | undefined): Pillar {
 }
 
 // ---------------------------------------------------------------------------------------------
+// Pillar 3b — NETWORK (crypto's answer to fundamentals)
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * Is the chain actually being used, and are miners still committing capital to it?
+ *
+ * This is the crypto equivalent of reading a company's accounts: it looks past the price at whether
+ * the thing underneath it is doing more business than it was. Three measurements, each a change over
+ * the window, each contributing one 0–100 sub-score; absent ones do not vote.
+ *
+ * ⚠️ THE BANDS ARE ASYMMETRIC ON PURPOSE, AND HASH RATE IS THE ASYMMETRIC ONE. Hash rate grows
+ * almost monotonically across cycles as hardware improves, so "up 5%" over a quarter is unremarkable
+ * while ANY sustained fall means miners are switching machines off — a genuine signal that costs
+ * real money to send. Scoring it symmetrically would read routine growth as strength.
+ *
+ * ⚠️ IT IS SCORED ON A SMOOTHED WINDOW, NOT ON TWO DAYS. Daily transaction counts swing wildly with
+ * fee spikes, exchange batching and a single busy weekend. `fetchBitcoinNetwork` compares 30-day
+ * averages for that reason; if you ever feed this raw endpoints, smooth them first or the pillar
+ * becomes a noise generator with a confident-looking bar beside it.
+ */
+export function scoreNetwork(n: NetworkStats | null | undefined): Pillar {
+  if (!n) {
+    return { score: null, confidence: 0, reasons: ["No on-chain network data available."] };
+  }
+  const reasons: string[] = [];
+  const parts: (number | null)[] = [];
+  let fields = 0;
+  const total = 3;
+  const win = n.windowDays != null && Number.isFinite(n.windowDays)
+    ? `over the last ${Math.round(n.windowDays)} days`
+    : "over the measurement window";
+
+  if (n.hashRateChange != null && Number.isFinite(n.hashRateChange)) {
+    fields++;
+    parts.push(ramp(n.hashRateChange, -0.1, 0.2));
+    reasons.push(
+      `Network hash rate ${pct(n.hashRateChange)} ${win} — ` +
+        (n.hashRateChange < 0
+          ? "miners are switching capacity off, which costs them money to do."
+          : "miners are still committing hardware to it."),
+    );
+  }
+  if (n.txCountChange != null && Number.isFinite(n.txCountChange)) {
+    fields++;
+    parts.push(ramp(n.txCountChange, -0.15, 0.15));
+    reasons.push(`Daily transactions ${pct(n.txCountChange)} ${win}.`);
+  }
+  if (n.activeAddressChange != null && Number.isFinite(n.activeAddressChange)) {
+    fields++;
+    parts.push(ramp(n.activeAddressChange, -0.15, 0.15));
+    reasons.push(`Daily active addresses ${pct(n.activeAddressChange)} ${win}.`);
+  }
+
+  const score = meanOf(parts);
+  if (score == null) {
+    return { score: null, confidence: 0, reasons: ["No on-chain network data available."] };
+  }
+  if (fields < total) {
+    reasons.push("Only part of the on-chain picture was available.");
+  }
+  // ⚠️ This line is not decoration. Network health is the input most likely to be misread as a price
+  // call, because it is the one that sounds like inside knowledge.
+  reasons.push(
+    "Network activity describes how the chain is being used. It is not a price forecast, and a busy " +
+      "chain has been cheap before.",
+  );
+  return { score, confidence: clamp(fields / total, 0, 1), reasons };
+}
+
+// ---------------------------------------------------------------------------------------------
 // Pillar 4 — RISK (a cap, not an average)
 // ---------------------------------------------------------------------------------------------
 
@@ -474,9 +552,16 @@ export function rateAsset(snap: AssetSnapshot): Rating {
 
   const trend = scoreTrend(closes);
   const analyst = scoreAnalyst(snap.consensus, snap.price);
-  const fundamentals = snap.kind === "crypto"
+  const isCrypto = snap.kind === "crypto";
+  const fundamentals = isCrypto
     ? { score: null, confidence: 0, reasons: ["Crypto has no company financials to assess."] }
     : scoreFundamentals(snap.fundamentals);
+  // ⚠️ NOT APPLICABLE IS NOT THE SAME AS MISSING, and only one of the two belongs in `missing`.
+  // An equity has no chain to measure, so saying its network data is absent would put a permanent
+  // "the picture is partial" caveat on every share in the list for a pillar that could never exist.
+  const network = isCrypto
+    ? scoreNetwork(snap.network)
+    : { score: null, confidence: 0, reasons: ["Network activity applies to crypto only."] };
   const risk = profileRisk(closes);
 
   // Renormalise the weights over whichever pillars produced a score.
@@ -486,11 +571,13 @@ export function rateAsset(snap: AssetSnapshot): Rating {
   if (fundamentals.score != null) {
     entries.push([fundamentals.score, WEIGHTS.fundamentals, fundamentals.confidence]);
   }
+  if (network.score != null) entries.push([network.score, WEIGHTS.network, network.confidence]);
 
   const missing: string[] = [];
   if (trend.score == null) missing.push("price trend");
   if (analyst.score == null) missing.push("analyst forecasts");
-  if (fundamentals.score == null) missing.push("company fundamentals");
+  if (!isCrypto && fundamentals.score == null) missing.push("company fundamentals");
+  if (isCrypto && network.score == null) missing.push("on-chain network activity");
 
   let composite = 0;
   let confidence = 0;
@@ -500,7 +587,14 @@ export function rateAsset(snap: AssetSnapshot): Rating {
     // Overall confidence is the weighted confidence of what we have, scaled by how much of the
     // intended weight was available at all — one strong pillar out of three is still one out of three.
     const cWeighted = entries.reduce((a, [, w, c]) => a + c * w, 0) / wSum;
-    confidence = cWeighted * (wSum / (WEIGHTS.trend + WEIGHTS.analyst + WEIGHTS.fundamentals));
+    // ⚠️ The denominator is the weight that COULD have applied to this KIND of asset, not the sum of
+    // every weight that exists. Dividing a crypto asset by trend+analyst+fundamentals+network would
+    // cap its confidence at 70% of the truth for owning no company accounts, and the confidence cap
+    // in `starsFor` would then dock its stars for a gap that is not a gap. Because `network` and
+    // `fundamentals` carry equal weight, this total is 1.0 for both kinds.
+    const applicable = WEIGHTS.trend + WEIGHTS.analyst +
+      (isCrypto ? WEIGHTS.network : WEIGHTS.fundamentals);
+    confidence = cWeighted * (wSum / applicable);
   }
 
   const { stars, caveats } = starsFor(composite, risk.band, confidence);
@@ -520,6 +614,7 @@ export function rateAsset(snap: AssetSnapshot): Rating {
     trend,
     analyst,
     fundamentals,
+    network,
     risk,
     caveats,
     missing,

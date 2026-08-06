@@ -11,6 +11,7 @@ import {
   rateAsset,
   scoreAnalyst,
   scoreFundamentals,
+  scoreNetwork,
   scoreTrend,
   starsFor,
 } from "../src/score.ts";
@@ -95,7 +96,12 @@ test("crypto is never scored on company fundamentals, even if some are passed in
     }),
   );
   assert.equal(r.fundamentals.score, null);
-  assert.ok(r.missing.includes("company fundamentals"));
+  // ⚠️ NOT LISTED AS MISSING, AND THAT IS THE POINT. Bitcoin will never have company accounts, so
+  // reporting them as absent puts a permanent "the picture is partial" caveat on every crypto row
+  // for a gap that can never be filled. Not applicable and missing are different states; only the
+  // second one is a caveat. The pillar that CAN apply to crypto is the network one, below.
+  assert.ok(!r.missing.includes("company fundamentals"));
+  assert.ok(r.missing.includes("on-chain network activity"));
 });
 
 // ---------------------------------------------------------------------------------------------
@@ -365,4 +371,106 @@ test("a rating always explains itself — no silent numbers", () => {
   assert.ok(r.fundamentals.reasons.length > 0);
   assert.ok(r.risk.reasons.length > 0);
   assert.ok(r.stars >= 1 && r.stars <= 5);
+});
+
+// ---------------------------------------------------------------------------------------------
+// The network pillar — crypto's answer to fundamentals
+// ---------------------------------------------------------------------------------------------
+
+test("absent on-chain data scores null, not zero", () => {
+  assert.equal(scoreNetwork(null).score, null);
+  assert.equal(scoreNetwork({}).score, null);
+  // The all-null shape is the one a half-failed fetch produces, and it must not read as a bad chain.
+  assert.equal(
+    scoreNetwork({ hashRateChange: null, txCountChange: null, activeAddressChange: null }).score,
+    null,
+  );
+});
+
+test("a growing chain outscores a shrinking one, and neither is scored 0 or 100", () => {
+  const growing = scoreNetwork({
+    hashRateChange: 0.15,
+    txCountChange: 0.12,
+    activeAddressChange: 0.1,
+    windowDays: 120,
+  });
+  const shrinking = scoreNetwork({
+    hashRateChange: -0.12,
+    txCountChange: -0.2,
+    activeAddressChange: -0.18,
+    windowDays: 120,
+  });
+  assert.ok(growing.score != null && shrinking.score != null);
+  assert.ok((growing.score as number) > (shrinking.score as number) + 30);
+  assert.equal(growing.confidence, 1);
+});
+
+test("hash rate is banded asymmetrically — routine growth is not strength", () => {
+  // Hash rate rises across cycles as hardware improves, so +5% over a quarter is unremarkable while
+  // ANY sustained fall means miners are powering machines down. Scored symmetrically, the first
+  // would read as a bullish signal. Compare like with like: same magnitude, opposite sign.
+  const up = scoreNetwork({ hashRateChange: 0.05 });
+  const down = scoreNetwork({ hashRateChange: -0.05 });
+  assert.ok(up.score != null && down.score != null);
+  assert.ok((up.score as number) < 60, `routine growth read as ${up.score}, should be middling`);
+  assert.ok((down.score as number) < 30, `a hash rate fall read as ${down.score}, too forgiving`);
+});
+
+test("thin on-chain data lowers confidence rather than the score", () => {
+  // ⚠️ COMPARE THE SAME FIELD, NOT THE SAME NUMBER. The first version of this test set all three
+  // fields to +10% and expected the partial and full scores to match — but hash rate is banded
+  // asymmetrically on purpose, so +10% is a middling 67 there and a strong 83 on the activity
+  // measures. The gap it caught was the deliberate asymmetry two tests above, not a dilution bug.
+  const twoFields = scoreNetwork({ txCountChange: 0.1, activeAddressChange: 0.1 });
+  const oneField = scoreNetwork({ txCountChange: 0.1 });
+  assert.ok(twoFields.score != null && oneField.score != null);
+  // The contract: dropping a measurement must not drag the score toward zero. It is the same
+  // "absent is not bad" rule the whole engine turns on, applied inside one pillar.
+  assert.ok(
+    Math.abs((twoFields.score as number) - (oneField.score as number)) < 1,
+    `one field scored ${oneField.score}, two scored ${twoFields.score} — absence diluted the score`,
+  );
+  assert.ok(oneField.confidence < twoFields.confidence);
+  assert.ok(oneField.reasons.some((r) => /part of the on-chain picture/i.test(r)));
+});
+
+test("the network pillar never presents itself as a price forecast", () => {
+  const p = scoreNetwork({ hashRateChange: 0.3, txCountChange: 0.3, activeAddressChange: 0.3 });
+  const text = p.reasons.join(" ");
+  assert.ok(/not a price forecast/i.test(text));
+  // The whole app's contract. A pillar that sounds like inside knowledge is the likeliest place to
+  // break it, so the ban is asserted here as well as in the copy.
+  assert.ok(!/will rise|going up|buy now|expect(ed)? to reach/i.test(text), text);
+});
+
+test("crypto is scored on its network where a share is scored on its accounts", () => {
+  const withChain = rateAsset(
+    snapshot({
+      kind: "crypto",
+      network: { hashRateChange: 0.18, txCountChange: 0.15, activeAddressChange: 0.14 },
+    }),
+  );
+  const withoutChain = rateAsset(snapshot({ kind: "crypto" }));
+  assert.ok(withChain.network.score != null);
+  assert.equal(withoutChain.network.score, null);
+  // A healthy chain has to actually move the composite, or the pillar is decoration.
+  assert.ok(withChain.composite > withoutChain.composite);
+  // And an equity must never be judged on a chain it does not have.
+  const share = rateAsset(snapshot({ kind: "equity" }));
+  assert.equal(share.network.score, null);
+  assert.ok(!share.missing.includes("on-chain network activity"));
+});
+
+test("a crypto asset is not docked confidence for having no company accounts", () => {
+  // The confidence denominator is the weight that COULD apply to this KIND. Divide crypto by every
+  // weight that exists and its confidence caps at 70% of the truth, and `starsFor`'s confidence cap
+  // then takes stars off it for a gap that is not a gap.
+  const chain = rateAsset(
+    snapshot({
+      kind: "crypto",
+      network: { hashRateChange: 0.18, txCountChange: 0.15, activeAddressChange: 0.14 },
+    }),
+  );
+  const noCapForThinData = chain.caveats.every((c) => !/not much data to go on/i.test(c));
+  assert.ok(noCapForThinData, chain.caveats.join(" | "));
 });

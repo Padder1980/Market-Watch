@@ -43,9 +43,38 @@ await page.addInitScript(() => {
     v *= 1 + 0.0015 + 0.004 * Math.sin(i / 9);
     prices.push([start + i * 86400000, v]);
   }
+  // A growing chain: hash rate, transactions and active addresses all rising across the window, so
+  // the Network pillar has something real to score. `windowChange` compares 30-day means at each
+  // end, so the series has to be long enough to contain two of them.
+  const chart = (from, to) => {
+    const values = [];
+    for (let i = 0; i < 120; i++) {
+      values.push({
+        x: Math.round((start + i * 86400000) / 1000),
+        y: from + (to - from) * (i / 119),
+      });
+    }
+    return { values };
+  };
   window.fetch = async (url) => {
-    if (String(url).includes("coingecko")) {
+    const u = String(url);
+    if (u.includes("coingecko")) {
       return { ok: true, status: 200, json: async () => ({ prices }) };
+    }
+    if (u.includes("blockchain.info/charts")) {
+      // ⚠️ Assert the CORS parameter here, not just the host. Without `&cors=true` the real browser
+      // discards the response before the app ever sees it — so dropping it would leave the pillar
+      // permanently absent in real use while every stubbed check carried on passing.
+      if (!u.includes("cors=true")) return { ok: false, status: 403, json: async () => ({}) };
+      if (u.includes("hash-rate")) {
+        return { ok: true, status: 200, json: async () => chart(600, 720) };
+      }
+      if (u.includes("n-transactions")) {
+        return { ok: true, status: 200, json: async () => chart(400000, 460000) };
+      }
+      if (u.includes("n-unique-addresses")) {
+        return { ok: true, status: 200, json: async () => chart(800000, 900000) };
+      }
     }
     return { ok: false, status: 404, json: async () => ({}) };
   };
@@ -64,13 +93,39 @@ check("both default watchlist rows rendered", cards === 2, `got ${cards}`);
 const stars = await page.locator(".card").first().locator(".stars").count();
 check("a star rating is drawn", stars === 1);
 
-// The critical one: crypto has no analyst or fundamentals data, and those bars must say so.
+// The critical one: crypto has no analyst coverage, and that bar must say so rather than sit empty.
+// ⚠️ It is ONE bar now, not two. Crypto used to show an empty "Business" pillar it could never fill;
+// it now shows "Network" in that slot instead, which it can. If this count moves again, check which
+// pillar changed before relaxing the number — an n/a that quietly became a zero looks identical here.
 const naLabels = await page.locator(".card").first().locator(".bar.na .num").allTextContents();
 check(
   "unavailable pillars render as n/a, never as an empty bar",
-  naLabels.length === 2 && naLabels.every((t) => t.trim() === "n/a"),
+  naLabels.length === 1 && naLabels.every((t) => t.trim() === "n/a"),
   JSON.stringify(naLabels),
 );
+
+const barLabels = await page.locator(".card").first().locator(".bar .lbl").allTextContents();
+check(
+  "crypto is offered a Network pillar, not a Business one it can never have",
+  barLabels.some((t) => /network/i.test(t)) && !barLabels.some((t) => /business/i.test(t)),
+  JSON.stringify(barLabels),
+);
+
+// End-to-end proof that the on-chain fetch reaches the screen: the Network bar must carry a real
+// number AND real pixels. A pillar wired up but rendering empty is the exact defect this file exists
+// for, and it would be invisible in the unit tests, which never touch the DOM.
+const netGeom = await page.locator(".card").first().locator(".bar").nth(2).evaluate((el) => {
+  const num = el.querySelector(".num");
+  const fill = el.querySelector(".fill");
+  const r = fill ? fill.getBoundingClientRect() : null;
+  return { label: (el.querySelector(".lbl") || {}).textContent, num: num ? num.textContent.trim() : null, w: r ? r.width : 0, h: r ? r.height : 0 };
+});
+check(
+  "the network pillar scores a growing chain and draws it",
+  /^\d+$/.test(netGeom.num || "") && Number(netGeom.num) > 50 && netGeom.w > 1 && netGeom.h > 1,
+  JSON.stringify(netGeom),
+);
+
 
 const trendBar = await page.locator(".card").first().locator(".bar:not(.na) .num").first().textContent();
 check("the trend pillar shows a real number", /^\d+$/.test((trendBar || "").trim()), trendBar ?? "");
@@ -97,6 +152,19 @@ const working = await page.locator(".card").first().locator(".working").innerTex
 check("the working names the risk band evidence", /volatility/i.test(working));
 check("the working explains the composite", /Composite score \d+\/100/.test(working));
 check("the working states what was missing", /without .*(analyst|fundamentals)/i.test(working));
+// ⚠️ Read this AFTER the summary click. `innerText` on a collapsed <details> returns an empty
+// string, which every one of these regexes would fail against — a real failure and a hidden panel
+// are indistinguishable from the assertion's point of view.
+check(
+  "the network working shows its evidence",
+  /hash rate/i.test(working) && /active addresses/i.test(working),
+  working.slice(0, 200),
+);
+check(
+  "the network working refuses to sound like a forecast",
+  /not a price forecast/i.test(working),
+  working.slice(0, 200),
+);
 
 // Sorting must re-render without throwing.
 await page.locator('.chip[data-sort="trend"]').click();

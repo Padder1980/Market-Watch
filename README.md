@@ -21,7 +21,14 @@ Four questions, asked separately:
 | **Trend** | Is the price climbing, and is the climb orderly? | Price history only |
 | **Forecasts** | Do the people who publish forecasts expect growth? | Analyst recommendations + price targets |
 | **Business** | Do the company's financials support it? | Reported revenue, earnings, margin, debt, P/E |
+| **Network** | Is the chain being used, and are miners still committing? | Hash rate, transactions, active addresses |
 | **Risk** | How badly could this hurt? | Volatility and worst peak-to-trough fall |
+
+**Business and Network share one slot.** A company has accounts and no chain; a crypto asset has a
+chain and no accounts. Each row shows whichever of the two applies to it, so nothing sits permanently
+greyed out for a pillar it could never have. Network is **Bitcoin only** so far — Blockchain.com
+indexes the Bitcoin chain and nothing else, so every other coin shows `n/a` there rather than being
+handed Bitcoin's numbers under its own name.
 
 The first three combine into a 0–100 composite (trend weighted heaviest, at 45%). **Risk does not
 combine — it caps.** A very-high-risk asset tops out at 3 stars and a high-risk one at 4, however
@@ -97,6 +104,7 @@ no key ever leaves your device except to the API it belongs to.
 | Source | Key needed? | Gives you |
 |---|---|---|
 | **CoinGecko** | No | Crypto price history. Works out of the box. |
+| **Blockchain.com** | No | Bitcoin on-chain activity — hash rate, transactions, active addresses |
 | **Twelve Data** | Free key | Daily price history for shares and funds |
 | **Finnhub** | Free key | Analyst recommendations and company financials |
 

@@ -187,6 +187,59 @@ says the same thing twice — *"Ignore: headlines lacking on-chain or macro supp
 price predictions without methodology"*. Do not build a sentiment pillar. If news is ever wanted it
 is as a **linked reading list**, not as a number.
 
+### What is BUILT of pile 2 (prototype, 2026-08-06): the Network pillar
+
+`scoreNetwork` + `fetchBitcoinNetwork` cover **signals 4 and 8** — on-chain activity and miner
+behaviour — from Blockchain.com's charts API: free, no key, and browser-readable via `&cors=true`.
+Three inputs: hash rate, daily transactions, daily active addresses.
+
+⚠️ **`&cors=true` IS WHY THIS SOURCE IS USABLE AT ALL.** Without it the endpoint sends no
+`Access-Control-Allow-Origin` and the browser discards the response before the app sees it. The
+smoke test asserts the parameter is on the URL, not just the host — drop it and the pillar goes
+permanently absent in real use while every stubbed check keeps passing.
+
+⚠️ **BITCOIN ONLY, AND THE GATE IS LOAD-BEARING.** Blockchain.com indexes the Bitcoin chain and
+nothing else, so calling it for Ethereum returns *Bitcoin's* numbers under Ethereum's name — a wrong
+answer indistinguishable from a right one. `fetchBitcoinNetwork` returns null for any other id.
+
+⚠️ **`network` AND `fundamentals` ARE ONE SLOT, AT EQUAL WEIGHT (0.30 each).** A company has accounts
+and no chain; a crypto asset has a chain and no accounts. Equal weights keep the applicable total at
+1.0 for both kinds, so the **confidence denominator does not change with asset type** — and the
+denominator is per-kind for the same reason. Divide crypto by every weight that exists and its
+confidence caps at 70% of the truth, at which point `starsFor`'s confidence cap docks its stars for a
+gap that is not a gap.
+
+⚠️ **NOT APPLICABLE IS NOT MISSING, and only one of the two is a caveat.** Crypto no longer reports
+"company fundamentals" as missing — Bitcoin will never have accounts, and a permanent "the picture is
+partial" note for an unfillable gap trains the reader to ignore the caveat that matters. Equities
+likewise never report the network pillar as missing. `test/score.test.ts` locks both directions.
+
+⚠️ **USD MINER REVENUE IS DELIBERATELY EXCLUDED**, and it is the obvious fourth input. It is block
+reward × price, so it rises whenever the price rises — add it and the Network pillar silently
+re-scores what Trend has already scored, and the composite double-counts one signal while looking
+like it averaged two.
+
+⚠️ **HASH RATE IS BANDED ASYMMETRICALLY** (`ramp(-0.10, 0.20)` against `±0.15` for the activity
+measures). Hash rate grows across cycles as hardware improves, so routine growth is unremarkable
+while any sustained fall means miners are powering machines down — a signal that costs real money to
+send. Scored symmetrically, ordinary growth reads as strength.
+
+⚠️ **SMOOTHED, NOT POINT-TO-POINT.** `windowChange` compares 30-day means at each end of the window.
+Daily transaction counts swing 30% on one busy weekend or one exchange changing its batching;
+first-vs-last would report a quarter's trend from two arbitrary days, with a confident bar beside it.
+
+⚠️ **A FAILED ENRICHMENT MUST NOT TAKE THE ROW DOWN.** `chartSeries` swallows its errors and returns
+null; the price fetch is the load-bearing one. An asset the user can still see beats a row that
+failed on an extra.
+
+**Still NOT built from pile 2, and the reason is cost, not difficulty:** ETF flows (his #1),
+institutional purchases (#2) and exchange reserves (#3) — his three highest priorities. Every
+provider of them is a paid subscription. Glassnode's API is a Professional-plan add-on (historically
+~$999/month; the $49 Advanced tier is capped at 50 calls a day and the free tier has no API key at
+all); CryptoQuant and CoinGlass are the same shape. **Do not approximate them with something free
+that answers a different question** — a cheaper proxy for "are institutions buying?" that is really
+measuring something else is worse than the honest `n/a` the app shows today.
+
 **Pile 2 — the data. THIS IS THE REAL WORK, and it is the one he asked to prototype.**
 His Tier 3 and his `SignalPriority`, in his order of importance:
 

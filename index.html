@@ -230,7 +230,7 @@ input[type="text"] { font-family: var(--mono); }
   </div>
 
   <div id="list"></div>
-  <div class="foot">Build 2026-08-06 13:26 · data from CoinGecko, Twelve Data and Finnhub · nothing leaves this device except calls to those APIs</div>
+  <div class="foot">Build 2026-08-06 13:59 · data from CoinGecko, Blockchain.com, Twelve Data and Finnhub · nothing leaves this device except calls to those APIs</div>
 </div>
 
 <div class="sheet-ov" id="setOv">
@@ -303,6 +303,7 @@ var MK = (() => {
     STAR_THRESHOLDS: () => STAR_THRESHOLDS,
     TARGET_NEUTRAL: () => TARGET_NEUTRAL,
     WEIGHTS: () => WEIGHTS,
+    fetchBitcoinNetwork: () => fetchBitcoinNetwork,
     fetchCrypto: () => fetchCrypto,
     fetchEquityHistory: () => fetchEquityHistory,
     loadWatchlist: () => loadWatchlist,
@@ -311,6 +312,7 @@ var MK = (() => {
     rateAsset: () => rateAsset,
     scoreAnalyst: () => scoreAnalyst,
     scoreFundamentals: () => scoreFundamentals,
+    scoreNetwork: () => scoreNetwork,
     scoreTrend: () => scoreTrend,
     starsFor: () => starsFor
   });
@@ -451,7 +453,7 @@ var MK = (() => {
   }
 
   // src/score.ts
-  var WEIGHTS = { trend: 0.45, analyst: 0.25, fundamentals: 0.3 };
+  var WEIGHTS = { trend: 0.45, analyst: 0.25, fundamentals: 0.3, network: 0.3 };
   var STAR_THRESHOLDS = [36, 50, 64, 78];
   var TARGET_NEUTRAL = 0.12;
   var CONSENSUS_NEUTRAL = 3.8;
@@ -624,6 +626,44 @@ var MK = (() => {
     }
     return { score, confidence: clamp(fields / total, 0, 1), reasons };
   }
+  function scoreNetwork(n) {
+    if (!n) {
+      return { score: null, confidence: 0, reasons: ["No on-chain network data available."] };
+    }
+    const reasons = [];
+    const parts = [];
+    let fields = 0;
+    const total = 3;
+    const win = n.windowDays != null && Number.isFinite(n.windowDays) ? `over the last ${Math.round(n.windowDays)} days` : "over the measurement window";
+    if (n.hashRateChange != null && Number.isFinite(n.hashRateChange)) {
+      fields++;
+      parts.push(ramp(n.hashRateChange, -0.1, 0.2));
+      reasons.push(
+        `Network hash rate ${pct(n.hashRateChange)} ${win} \u2014 ` + (n.hashRateChange < 0 ? "miners are switching capacity off, which costs them money to do." : "miners are still committing hardware to it.")
+      );
+    }
+    if (n.txCountChange != null && Number.isFinite(n.txCountChange)) {
+      fields++;
+      parts.push(ramp(n.txCountChange, -0.15, 0.15));
+      reasons.push(`Daily transactions ${pct(n.txCountChange)} ${win}.`);
+    }
+    if (n.activeAddressChange != null && Number.isFinite(n.activeAddressChange)) {
+      fields++;
+      parts.push(ramp(n.activeAddressChange, -0.15, 0.15));
+      reasons.push(`Daily active addresses ${pct(n.activeAddressChange)} ${win}.`);
+    }
+    const score = meanOf(parts);
+    if (score == null) {
+      return { score: null, confidence: 0, reasons: ["No on-chain network data available."] };
+    }
+    if (fields < total) {
+      reasons.push("Only part of the on-chain picture was available.");
+    }
+    reasons.push(
+      "Network activity describes how the chain is being used. It is not a price forecast, and a busy chain has been cheap before."
+    );
+    return { score, confidence: clamp(fields / total, 0, 1), reasons };
+  }
   var VOL_BANDS = [
     [0.18, "low"],
     [0.32, "moderate"],
@@ -701,7 +741,9 @@ var MK = (() => {
     const closes = snap.history.map((c) => c.close).filter((c) => Number.isFinite(c) && c > 0);
     const trend = scoreTrend(closes);
     const analyst = scoreAnalyst(snap.consensus, snap.price);
-    const fundamentals = snap.kind === "crypto" ? { score: null, confidence: 0, reasons: ["Crypto has no company financials to assess."] } : scoreFundamentals(snap.fundamentals);
+    const isCrypto = snap.kind === "crypto";
+    const fundamentals = isCrypto ? { score: null, confidence: 0, reasons: ["Crypto has no company financials to assess."] } : scoreFundamentals(snap.fundamentals);
+    const network = isCrypto ? scoreNetwork(snap.network) : { score: null, confidence: 0, reasons: ["Network activity applies to crypto only."] };
     const risk = profileRisk(closes);
     const entries = [];
     if (trend.score != null) entries.push([trend.score, WEIGHTS.trend, trend.confidence]);
@@ -709,17 +751,20 @@ var MK = (() => {
     if (fundamentals.score != null) {
       entries.push([fundamentals.score, WEIGHTS.fundamentals, fundamentals.confidence]);
     }
+    if (network.score != null) entries.push([network.score, WEIGHTS.network, network.confidence]);
     const missing = [];
     if (trend.score == null) missing.push("price trend");
     if (analyst.score == null) missing.push("analyst forecasts");
-    if (fundamentals.score == null) missing.push("company fundamentals");
+    if (!isCrypto && fundamentals.score == null) missing.push("company fundamentals");
+    if (isCrypto && network.score == null) missing.push("on-chain network activity");
     let composite = 0;
     let confidence = 0;
     if (entries.length > 0) {
       const wSum = entries.reduce((a, [, w]) => a + w, 0);
       composite = entries.reduce((a, [s, w]) => a + s * w, 0) / wSum;
       const cWeighted = entries.reduce((a, [, w, c]) => a + c * w, 0) / wSum;
-      confidence = cWeighted * (wSum / (WEIGHTS.trend + WEIGHTS.analyst + WEIGHTS.fundamentals));
+      const applicable = WEIGHTS.trend + WEIGHTS.analyst + (isCrypto ? WEIGHTS.network : WEIGHTS.fundamentals);
+      confidence = cWeighted * (wSum / applicable);
     }
     const { stars, caveats } = starsFor(composite, risk.band, confidence);
     if (missing.length > 0) {
@@ -737,6 +782,7 @@ var MK = (() => {
       trend,
       analyst,
       fundamentals,
+      network,
       risk,
       caveats,
       missing
@@ -821,6 +867,49 @@ var MK = (() => {
       fundamentals: null,
       sources: ["CoinGecko (price history)"]
     };
+  }
+  var BC = "https://api.blockchain.info/charts";
+  async function chartSeries(chart, days) {
+    try {
+      const data = await getJson(
+        `${BC}/${chart}?timespan=${days}days&format=json&cors=true`,
+        "Blockchain.com"
+      );
+      const vals = Array.isArray(data.values) ? data.values : [];
+      const ys = vals.map((v) => Number(v.y)).filter((y) => Number.isFinite(y) && y > 0);
+      return ys.length > 0 ? ys : null;
+    } catch {
+      return null;
+    }
+  }
+  var NET_WIN = 30;
+  function windowChange(series, span) {
+    if (!series || series.length < span + NET_WIN * 2) return null;
+    const recent = series.slice(-NET_WIN);
+    const base = series.slice(0, NET_WIN);
+    const mean = (xs) => xs.reduce((a, b2) => a + b2, 0) / xs.length;
+    const b = mean(base);
+    if (!Number.isFinite(b) || b <= 0) return null;
+    const change = mean(recent) / b - 1;
+    return Number.isFinite(change) ? change : null;
+  }
+  async function fetchBitcoinNetwork(id) {
+    if (id !== "bitcoin") return null;
+    const days = 120;
+    const hash = await chartSeries("hash-rate", days);
+    const tx = await chartSeries("n-transactions", days);
+    const addr = await chartSeries("n-unique-addresses", days);
+    if (!hash && !tx && !addr) return null;
+    const stats = {
+      hashRateChange: windowChange(hash, 0),
+      txCountChange: windowChange(tx, 0),
+      activeAddressChange: windowChange(addr, 0),
+      windowDays: days
+    };
+    if (stats.hashRateChange == null && stats.txCountChange == null && stats.activeAddressChange == null) {
+      return null;
+    }
+    return stats;
   }
   var TD = "https://api.twelvedata.com";
   async function fetchEquityHistory(symbol, key) {
@@ -917,7 +1006,13 @@ var MK = (() => {
       onProgress?.(done, items.length, item.label ?? item.id);
       try {
         if (item.kind === "crypto") {
-          snapshots.push(await fetchCrypto(item.id, vsCurrency));
+          const snap = await fetchCrypto(item.id, vsCurrency);
+          const network = await fetchBitcoinNetwork(item.id);
+          if (network) {
+            snap.network = network;
+            snap.sources = [...snap.sources ?? [], "Blockchain.com (on-chain activity)"];
+          }
+          snapshots.push(snap);
         } else {
           if (!keys.twelveData) {
             throw new ProviderError(
@@ -1108,7 +1203,14 @@ var MK = (() => {
     html += '<div class="bars">';
     html += barHtml("Trend", rating.trend);
     html += barHtml("Forecasts", rating.analyst);
-    html += barHtml("Business", rating.fundamentals);
+    // Business and Network occupy one slot between them: a company has accounts and no chain, a
+    // crypto asset has a chain and no accounts. Showing both would put a permanent hatched "n/a"
+    // on every row for a pillar that could never apply to it, which is noise dressed as a gap.
+    if (rating.kind === "crypto") {
+      html += barHtml("Network", rating.network);
+    } else {
+      html += barHtml("Business", rating.fundamentals);
+    }
     html += "</div>";
 
     html += '<details class="more"><summary>Show the working</summary><div class="working">';
@@ -1122,7 +1224,11 @@ var MK = (() => {
     }
     html += "<h4>Trend</h4>" + listHtml(rating.trend.reasons);
     html += "<h4>Published forecasts</h4>" + listHtml(rating.analyst.reasons);
-    html += "<h4>Business data</h4>" + listHtml(rating.fundamentals.reasons);
+    if (rating.kind === "crypto") {
+      html += "<h4>On-chain network</h4>" + listHtml(rating.network.reasons);
+    } else {
+      html += "<h4>Business data</h4>" + listHtml(rating.fundamentals.reasons);
+    }
     html += "<h4>Risk</h4>" + listHtml(rating.risk.reasons);
     if (snap.sources && snap.sources.length) {
       html += '<div class="srcs">Sources: ' + esc(snap.sources.join("; ")) +

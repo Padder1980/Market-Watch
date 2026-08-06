@@ -230,7 +230,7 @@ input[type="text"] { font-family: var(--mono); }
   </div>
 
   <div id="list"></div>
-  <div class="foot">Build __BUILD__ · data from CoinGecko, Twelve Data and Finnhub · nothing leaves this device except calls to those APIs</div>
+  <div class="foot">Build __BUILD__ · data from CoinGecko, Blockchain.com, Twelve Data and Finnhub · nothing leaves this device except calls to those APIs</div>
 </div>
 
 <div class="sheet-ov" id="setOv">
@@ -416,7 +416,14 @@ input[type="text"] { font-family: var(--mono); }
     html += '<div class="bars">';
     html += barHtml("Trend", rating.trend);
     html += barHtml("Forecasts", rating.analyst);
-    html += barHtml("Business", rating.fundamentals);
+    // Business and Network occupy one slot between them: a company has accounts and no chain, a
+    // crypto asset has a chain and no accounts. Showing both would put a permanent hatched "n/a"
+    // on every row for a pillar that could never apply to it, which is noise dressed as a gap.
+    if (rating.kind === "crypto") {
+      html += barHtml("Network", rating.network);
+    } else {
+      html += barHtml("Business", rating.fundamentals);
+    }
     html += "</div>";
 
     html += '<details class="more"><summary>Show the working</summary><div class="working">';
@@ -430,7 +437,11 @@ input[type="text"] { font-family: var(--mono); }
     }
     html += "<h4>Trend</h4>" + listHtml(rating.trend.reasons);
     html += "<h4>Published forecasts</h4>" + listHtml(rating.analyst.reasons);
-    html += "<h4>Business data</h4>" + listHtml(rating.fundamentals.reasons);
+    if (rating.kind === "crypto") {
+      html += "<h4>On-chain network</h4>" + listHtml(rating.network.reasons);
+    } else {
+      html += "<h4>Business data</h4>" + listHtml(rating.fundamentals.reasons);
+    }
     html += "<h4>Risk</h4>" + listHtml(rating.risk.reasons);
     if (snap.sources && snap.sources.length) {
       html += '<div class="srcs">Sources: ' + esc(snap.sources.join("; ")) +

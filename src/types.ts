@@ -43,6 +43,31 @@ export interface Fundamentals {
   returnOnEquity?: number | null;
 }
 
+/**
+ * On-chain network measurements for a crypto asset — the "is the network actually being used, and
+ * are miners still committing capital to it?" question. Every field is a fractional change over the
+ * measurement window: 0.08 = +8%.
+ *
+ * ⚠️ USD MINER REVENUE IS DELIBERATELY ABSENT. It is the obvious fourth field and it is the wrong
+ * one: miner revenue in dollars is block reward × price, so it rises whenever the price rises. Add
+ * it and the Network pillar quietly re-scores the price the Trend pillar has already scored, and the
+ * composite double-counts a single signal while appearing to average two independent ones.
+ *
+ * ⚠️ THESE ARE NOT PRICE SIGNALS AND MUST NEVER BE PRESENTED AS ONE. Hash rate follows past
+ * profitability; transaction counts move with fee markets and batching habits. They say whether the
+ * network is healthy, which is a different question from whether the price will rise.
+ */
+export interface NetworkStats {
+  /** Change in total network hash rate — miner capital commitment. */
+  hashRateChange?: number | null;
+  /** Change in daily confirmed transactions — settlement demand. */
+  txCountChange?: number | null;
+  /** Change in daily unique active addresses — how many participants are moving coins. */
+  activeAddressChange?: number | null;
+  /** Length of the comparison window in days, for the "show your working" panel. */
+  windowDays?: number | null;
+}
+
 /** Everything the scorer needs about one asset. Assembled by the providers, consumed by `rateAsset`. */
 export interface AssetSnapshot {
   id: string;
@@ -56,6 +81,7 @@ export interface AssetSnapshot {
   history: Candle[];
   consensus?: AnalystConsensus | null;
   fundamentals?: Fundamentals | null;
+  network?: NetworkStats | null;
   /** Where each part came from, for the "show your working" panel. */
   sources?: string[];
 }
@@ -96,6 +122,8 @@ export interface Rating {
   trend: Pillar;
   analyst: Pillar;
   fundamentals: Pillar;
+  /** Crypto only. Scores `null` for equities, where it is not applicable rather than missing. */
+  network: Pillar;
   risk: RiskProfile;
   /** Why the stars are what they are, including any cap that bit. */
   caveats: string[];

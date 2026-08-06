@@ -10,7 +10,13 @@
 // ⚠️ EVERY FETCH HERE CAN FAIL, AND A FAILURE MUST NOT LOOK LIKE A BAD SCORE. Adapters return
 // partial snapshots and record what was missing; the scorer treats absent inputs as `null`, never 0.
 
-import type { AnalystConsensus, AssetSnapshot, Candle, Fundamentals } from "./types.ts";
+import type {
+  AnalystConsensus,
+  AssetSnapshot,
+  Candle,
+  Fundamentals,
+  NetworkStats,
+} from "./types.ts";
 
 export interface Keys {
   /** twelvedata.com — free tier covers daily price history. */
@@ -101,6 +107,96 @@ export async function fetchCrypto(id: string, vs: string): Promise<AssetSnapshot
     fundamentals: null,
     sources: ["CoinGecko (price history)"],
   };
+}
+
+// ---------------------------------------------------------------------------------------------
+// Blockchain.com charts — Bitcoin on-chain activity, no key required
+// ---------------------------------------------------------------------------------------------
+
+const BC = "https://api.blockchain.info/charts";
+
+/**
+ * ⚠️ `&cors=true` IS THE WHOLE REASON THIS SOURCE IS USABLE. Without it the endpoint sends no
+ * `Access-Control-Allow-Origin` header and the browser discards the response before this code sees
+ * it — the same wall that rules out Stooq, Yahoo and the RSS feeds. It is not an optimisation and it
+ * must not be dropped as noise.
+ *
+ * ⚠️ THIS IS A BITCOIN-ONLY SOURCE. Blockchain.com indexes the Bitcoin chain and nothing else, so
+ * calling it for any other asset returns Bitcoin's numbers under that asset's name — a wrong answer
+ * that looks exactly like a right one. `fetchBitcoinNetwork` is gated on the CoinGecko id.
+ */
+async function chartSeries(chart: string, days: number): Promise<number[] | null> {
+  try {
+    const data = (await getJson(
+      `${BC}/${chart}?timespan=${days}days&format=json&cors=true`,
+      "Blockchain.com",
+    )) as { values?: { x: number; y: number }[] };
+    const vals = Array.isArray(data.values) ? data.values : [];
+    const ys = vals.map((v) => Number(v.y)).filter((y) => Number.isFinite(y) && y > 0);
+    return ys.length > 0 ? ys : null;
+  } catch {
+    // ⚠️ A network pillar that cannot load must degrade to ABSENT, never to a bad score, and must
+    // never take the whole row down with it. The price history is the load-bearing fetch; this is
+    // an enrichment, and an asset the user can still see beats a spinner that failed on an extra.
+    return null;
+  }
+}
+
+/** Window used for both halves of the comparison. 30 days each side, 90 days apart end to end. */
+const NET_WIN = 30;
+
+/**
+ * Compare the mean of the most recent `NET_WIN` days against the mean of the `NET_WIN` days at the
+ * start of the window.
+ *
+ * ⚠️ NOT A POINT-TO-POINT CHANGE. Daily transaction counts routinely swing 30% on a single busy
+ * weekend or one exchange changing its batching, so first-vs-last would report a quarter's trend
+ * from two arbitrary days — and it would do it with a confident bar beside it.
+ */
+function windowChange(series: number[] | null, span: number): number | null {
+  if (!series || series.length < span + NET_WIN * 2) return null;
+  const recent = series.slice(-NET_WIN);
+  const base = series.slice(0, NET_WIN);
+  const mean = (xs: number[]): number => xs.reduce((a, b) => a + b, 0) / xs.length;
+  const b = mean(base);
+  if (!Number.isFinite(b) || b <= 0) return null;
+  const change = mean(recent) / b - 1;
+  return Number.isFinite(change) ? change : null;
+}
+
+/**
+ * Bitcoin on-chain activity: miner commitment and settlement demand over the last quarter.
+ *
+ * Covers two of the owner's stated signals — on-chain activity and miner behaviour — from a free,
+ * keyless, browser-readable source. The higher-priority signals (ETF flows, exchange reserves) are
+ * NOT here: every provider of them is a paid subscription, which is recorded in CLAUDE.md rather
+ * than approximated with something cheaper that would answer a different question.
+ */
+export async function fetchBitcoinNetwork(id: string): Promise<NetworkStats | null> {
+  if (id !== "bitcoin") return null;
+  const days = 120;
+  // Sequential, not parallel: same reasoning as the equity loader — three simultaneous requests to a
+  // free endpoint is the fastest way to be rate-limited on all three at once.
+  const hash = await chartSeries("hash-rate", days);
+  const tx = await chartSeries("n-transactions", days);
+  const addr = await chartSeries("n-unique-addresses", days);
+  if (!hash && !tx && !addr) return null;
+
+  // The series arrive at different sampling rates, so the span is derived per series rather than
+  // assumed from `days`.
+  const stats: NetworkStats = {
+    hashRateChange: windowChange(hash, 0),
+    txCountChange: windowChange(tx, 0),
+    activeAddressChange: windowChange(addr, 0),
+    windowDays: days,
+  };
+  if (
+    stats.hashRateChange == null && stats.txCountChange == null &&
+    stats.activeAddressChange == null
+  ) {
+    return null;
+  }
+  return stats;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -273,7 +369,16 @@ export async function loadWatchlist(
     onProgress?.(done, items.length, item.label ?? item.id);
     try {
       if (item.kind === "crypto") {
-        snapshots.push(await fetchCrypto(item.id, vsCurrency));
+        const snap = await fetchCrypto(item.id, vsCurrency);
+        // Enrichment, and it is allowed to fail silently — `fetchBitcoinNetwork` returns null both
+        // for a non-Bitcoin asset and for an unreachable endpoint, and the scorer reads null as
+        // "not measured" rather than as a bad result.
+        const network = await fetchBitcoinNetwork(item.id);
+        if (network) {
+          snap.network = network;
+          snap.sources = [...(snap.sources ?? []), "Blockchain.com (on-chain activity)"];
+        }
+        snapshots.push(snap);
       } else {
         if (!keys.twelveData) {
           throw new ProviderError(
