@@ -9,6 +9,7 @@ export {
   scoreAnalyst,
   scoreFundamentals,
   scoreNetwork,
+  scoreFlows,
   profileRisk,
   starsFor,
   WEIGHTS,
@@ -16,12 +17,14 @@ export {
   RISK_STAR_CAP,
   TARGET_NEUTRAL,
   CONSENSUS_NEUTRAL,
+  FLOWS_STALE_DAYS,
 } from "./src/score.ts";
 export type { SortKey } from "./src/score.ts";
 
 export {
   fetchBitcoinNetwork,
   fetchCrypto,
+  fetchFlows,
   fetchEquityHistory,
   loadWatchlist,
   ProviderError,
@@ -32,6 +35,7 @@ export type {
   AssetKind,
   AssetSnapshot,
   Candle,
+  FlowStats,
   NetworkStats,
   Pillar,
   Rating,

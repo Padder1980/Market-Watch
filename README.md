@@ -14,24 +14,43 @@ to, and moved here on 2026-08-06. It shares no code, no build and no storage key
 currently line up. That is a genuinely useful thing to see at a glance, and it is a different thing
 from "this will go up" — which nobody can tell you, and which any app claiming to is guessing.
 
-Four questions, asked separately:
+Five questions, asked separately:
 
 | Pillar | What it reads | Where it comes from |
 |---|---|---|
 | **Trend** | Is the price climbing, and is the climb orderly? | Price history only |
-| **Forecasts** | Do the people who publish forecasts expect growth? | Analyst recommendations + price targets |
-| **Business** | Do the company's financials support it? | Reported revenue, earnings, margin, debt, P/E |
-| **Network** | Is the chain being used, and are miners still committing? | Hash rate, transactions, active addresses |
+| **Forecasts** *(shares)* | Do the people who publish forecasts expect growth? | Analyst recommendations + price targets |
+| **Flows** *(crypto)* | Are the people who allocate real money moving it in or out? | US spot ETF flows, public-company holdings |
+| **Business** *(shares)* | Do the company's financials support it? | Reported revenue, earnings, margin, debt, P/E |
+| **Network** *(crypto)* | Is the chain being used, and are miners still committing? | Hash rate, transactions, active addresses |
 | **Risk** | How badly could this hurt? | Volatility and worst peak-to-trough fall |
 
-**Business and Network share one slot.** A company has accounts and no chain; a crypto asset has a
-chain and no accounts. Each row shows whichever of the two applies to it, so nothing sits permanently
-greyed out for a pillar it could never have. Network is **Bitcoin only** so far — Blockchain.com
-indexes the Bitcoin chain and nothing else, so every other coin shows `n/a` there rather than being
+**The pillars are PAIRED into two slots.** A company has accounts and analyst coverage; a crypto
+asset has a chain and institutional flows. Each row shows whichever half applies to it, so nothing
+sits permanently greyed out for a pillar it could never have. Flows sits opposite Forecasts on merit,
+not convenience: both answer "what do the professionals think?" — analysts by saying it, allocators
+by moving money.
+
+Flows and Network are **Bitcoin only** so far. Blockchain.com indexes no chain but Bitcoin's, and the
+flow snapshot covers the US spot Bitcoin ETFs, so every other coin shows `n/a` rather than being
 handed Bitcoin's numbers under its own name.
 
-The first three combine into a 0–100 composite (trend weighted heaviest, at 45%). **Risk does not
-combine — it caps.** A very-high-risk asset tops out at 3 stars and a high-risk one at 4, however
+### Where the flow numbers come from — "the paper round"
+
+Farside publishes the daily ETF flow table free, and the treasuries pages publish holdings free.
+Neither will let a *web page* read them (no CORS header) — but that rule only applies inside
+browsers. So a GitHub Action runs on GitHub's servers once a day, reads those pages, and commits
+`data/flows.json` into this repo. The app then reads its own file, from its own origin.
+
+Still no server, still no key, still £0. The trade is that flows are **yesterday-evening fresh**
+rather than live — which is exactly how often they are published anyway.
+
+⚠️ **If the robot stops, the app says so.** Flow data older than a week is refused rather than
+believed, and the pillar shows `n/a`. A scraper's failure mode is going quiet, and stale numbers
+wearing today's stars is the one thing this design must never do.
+
+Everything except Risk combines into a 0–100 composite (trend weighted heaviest, at 45%). **Risk does
+not combine — it caps.** A very-high-risk asset tops out at 3 stars and a high-risk one at 4, however
 strong everything else looks.
 
 That cap is the most important design decision in here, and it is there because of the thing you
@@ -85,8 +104,8 @@ To put it on your phone: serve the folder over HTTP and add it to the Home Scree
 ```bash
 node build.ts                  # rebuild first — every check below reads the BUILT page
 npx tsc --noEmit               # typecheck
-node --test "test/*.test.ts"   # 35 engine tests
-node test/app-smoke.mjs        # 16 browser checks against the BUILT page
+node --test "test/*.test.ts"   # 54 engine tests
+node test/app-smoke.mjs        # 25 browser checks against the BUILT page
 ```
 
 Or `npm run check`, which runs all four in that order.
@@ -105,11 +124,12 @@ no key ever leaves your device except to the API it belongs to.
 |---|---|---|
 | **CoinGecko** | No | Crypto price history. Works out of the box. |
 | **Blockchain.com** | No | Bitcoin on-chain activity — hash rate, transactions, active addresses |
+| **Farside / treasuries** | No | ETF flows and company holdings, via the daily paper round |
 | **Twelve Data** | Free key | Daily price history for shares and funds |
 | **Finnhub** | Free key | Analyst recommendations and company financials |
 
-So: **crypto works immediately with no signup.** Shares need one free key; the Forecasts and Business
-pillars need the second. Paste them into ⚙ Settings. Anything missing is scored as *absent*, never
+So: **crypto works immediately with no signup** — price, on-chain activity and flows all arrive with
+no key at all. Shares need one free key; the Forecasts and Business pillars need the second. Paste them into ⚙ Settings. Anything missing is scored as *absent*, never
 as *bad* — you'll see `n/a` on that bar and a note saying the picture is partial.
 
 ⚠️ **Provider choice was forced by CORS, not by quality.** Better free sources exist — Stooq's CSV,

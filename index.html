@@ -216,7 +216,8 @@ input[type="text"] { font-family: var(--mono); }
   <div class="notice">
     <strong>These stars are not advice, and they are not a forecast.</strong>
     They count how many measurable signals currently line up — past price behaviour, published
-    analyst views, and reported company financials. Every star can be traced to its arithmetic:
+    analyst views, reported company financials, and for Bitcoin the money that has already moved
+    into or out of the ETFs plus how busy the chain is. Every star can be traced to its arithmetic:
     open <em>Show the working</em> on any row. Momentum is also the mechanism by which people buy
     tops, so the risk band is a hard cap, never an average.
   </div>
@@ -224,13 +225,13 @@ input[type="text"] { font-family: var(--mono); }
   <div class="chips" id="chips">
     <button class="chip" data-sort="stars" aria-pressed="true">Overall</button>
     <button class="chip" data-sort="trend" aria-pressed="false">Trending up</button>
-    <button class="chip" data-sort="analyst" aria-pressed="false">Forecast growth</button>
-    <button class="chip" data-sort="fundamentals" aria-pressed="false">Business data</button>
+    <button class="chip" data-sort="analyst" aria-pressed="false">Forecasts &amp; flows</button>
+    <button class="chip" data-sort="fundamentals" aria-pressed="false">Business &amp; network</button>
     <button class="chip" data-sort="risk" aria-pressed="false">Lowest risk</button>
   </div>
 
   <div id="list"></div>
-  <div class="foot">Build 2026-08-06 13:59 · data from CoinGecko, Blockchain.com, Twelve Data and Finnhub · nothing leaves this device except calls to those APIs</div>
+  <div class="foot">Build 2026-08-06 15:59 · data from CoinGecko, Blockchain.com, Twelve Data, Finnhub, and Farside Investors via a daily snapshot · nothing leaves this device except calls to those APIs</div>
 </div>
 
 <div class="sheet-ov" id="setOv">
@@ -298,6 +299,7 @@ var MK = (() => {
   var entry_exports = {};
   __export(entry_exports, {
     CONSENSUS_NEUTRAL: () => CONSENSUS_NEUTRAL,
+    FLOWS_STALE_DAYS: () => FLOWS_STALE_DAYS,
     ProviderError: () => ProviderError,
     RISK_STAR_CAP: () => RISK_STAR_CAP,
     STAR_THRESHOLDS: () => STAR_THRESHOLDS,
@@ -306,11 +308,13 @@ var MK = (() => {
     fetchBitcoinNetwork: () => fetchBitcoinNetwork,
     fetchCrypto: () => fetchCrypto,
     fetchEquityHistory: () => fetchEquityHistory,
+    fetchFlows: () => fetchFlows,
     loadWatchlist: () => loadWatchlist,
     profileRisk: () => profileRisk,
     rankRatings: () => rankRatings,
     rateAsset: () => rateAsset,
     scoreAnalyst: () => scoreAnalyst,
+    scoreFlows: () => scoreFlows,
     scoreFundamentals: () => scoreFundamentals,
     scoreNetwork: () => scoreNetwork,
     scoreTrend: () => scoreTrend,
@@ -453,7 +457,13 @@ var MK = (() => {
   }
 
   // src/score.ts
-  var WEIGHTS = { trend: 0.45, analyst: 0.25, fundamentals: 0.3, network: 0.3 };
+  var WEIGHTS = {
+    trend: 0.45,
+    analyst: 0.25,
+    fundamentals: 0.3,
+    network: 0.3,
+    flows: 0.25
+  };
   var STAR_THRESHOLDS = [36, 50, 64, 78];
   var TARGET_NEUTRAL = 0.12;
   var CONSENSUS_NEUTRAL = 3.8;
@@ -664,6 +674,87 @@ var MK = (() => {
     );
     return { score, confidence: clamp(fields / total, 0, 1), reasons };
   }
+  var FLOWS_STALE_DAYS = 7;
+  var FLOWS_MIN_HISTORY = 40;
+  var FLOW_WINDOWS = [5, 20];
+  function daysBetween(isoThen, nowMs) {
+    const then = Date.parse(`${isoThen}T00:00:00Z`);
+    if (!Number.isFinite(then)) return null;
+    return (nowMs - then) / 864e5;
+  }
+  function usdM(x) {
+    const a = Math.abs(x);
+    return a >= 1e3 ? `${(a / 1e3).toFixed(1)}bn` : `${Math.round(a)}m`;
+  }
+  function scoreFlowWindow(daily, win) {
+    if (daily.length < Math.max(FLOWS_MIN_HISTORY, win * 2)) return null;
+    const sums = [];
+    let acc = 0;
+    for (let i = 0; i < daily.length; i++) {
+      acc += daily[i];
+      if (i >= win) acc -= daily[i - win];
+      if (i >= win - 1) sums.push(acc);
+    }
+    const absSorted = sums.map(Math.abs).sort((a, b) => a - b);
+    const scale = absSorted[Math.floor(absSorted.length / 2)];
+    if (!Number.isFinite(scale) || scale <= 0) return null;
+    const sum = sums[sums.length - 1];
+    return { score: ramp(sum, -3 * scale, 3 * scale), sum, scale };
+  }
+  function scoreFlows(f, nowMs = Date.now()) {
+    if (!f) {
+      return { score: null, confidence: 0, reasons: ["No institutional flow data available."] };
+    }
+    const reasons = [];
+    const parts = [];
+    const confs = [];
+    const daily = Array.isArray(f.etfDailyUsdM) ? f.etfDailyUsdM.filter((x) => Number.isFinite(x)) : [];
+    const etfAge = f.etfAsOf ? daysBetween(f.etfAsOf, nowMs) : null;
+    if (daily.length > 0 && etfAge != null && etfAge > FLOWS_STALE_DAYS) {
+      reasons.push(
+        `ETF flow data ends ${Math.round(etfAge)} days ago \u2014 too old to trust, so it is treated as absent rather than believed.`
+      );
+    } else if (daily.length > 0) {
+      for (const win of FLOW_WINDOWS) {
+        const w = scoreFlowWindow(daily, win);
+        if (!w) continue;
+        parts.push(w.score);
+        const label = win === 5 ? "week" : "month";
+        const verb = w.sum >= 0 ? "took in" : "shed";
+        reasons.push(
+          `US spot Bitcoin ETFs ${verb} ${usdM(w.sum)} over the last trading ${label} \u2014 about ${(Math.abs(w.sum) / w.scale).toFixed(1)}\xD7 the typical ${label}'s move since launch.`
+        );
+      }
+      if (parts.length > 0) confs.push(Math.min(1, daily.length / 120));
+    }
+    const corpAge = f.fetchedAt ? daysBetween(f.fetchedAt, nowMs) : null;
+    if (f.corpChangeBtc != null && Number.isFinite(f.corpChangeBtc) && f.corpHoldingsBtc != null && Number.isFinite(f.corpHoldingsBtc) && f.corpHoldingsBtc > 0 && f.corpChangeDays != null && f.corpChangeDays >= 14 && (corpAge == null || corpAge <= FLOWS_STALE_DAYS)) {
+      const frac = f.corpChangeBtc / f.corpHoldingsBtc;
+      parts.push(ramp(frac, -0.03, 0.03));
+      confs.push(0.6);
+      const verb = f.corpChangeBtc >= 0 ? "added" : "shed";
+      reasons.push(
+        `Public companies ${verb} ${Math.round(Math.abs(f.corpChangeBtc)).toLocaleString("en-GB")} BTC over the last ${Math.round(f.corpChangeDays)} days (holdings ${Math.round(f.corpHoldingsBtc).toLocaleString("en-GB")} BTC).`
+      );
+    } else if (f.corpHoldingsBtc != null && Number.isFinite(f.corpHoldingsBtc)) {
+      reasons.push(
+        "Public-company holdings recorded; the change becomes measurable once a couple of weeks of daily snapshots accumulate."
+      );
+    }
+    const score = meanOf(parts.length > 0 ? parts : [null]);
+    if (score == null) {
+      return {
+        score: null,
+        confidence: 0,
+        reasons: reasons.length > 0 ? reasons : ["No institutional flow data available."]
+      };
+    }
+    reasons.push(
+      "Flows describe money that has already moved. They are not a price forecast, and heavy inflows have arrived near tops before."
+    );
+    const confidence = confs.length > 0 ? confs.reduce((a, b) => a + b, 0) / confs.length * (parts.length >= 2 ? 1 : 0.7) : 0;
+    return { score, confidence: clamp(confidence, 0, 1), reasons };
+  }
   var VOL_BANDS = [
     [0.18, "low"],
     [0.32, "moderate"],
@@ -744,26 +835,29 @@ var MK = (() => {
     const isCrypto = snap.kind === "crypto";
     const fundamentals = isCrypto ? { score: null, confidence: 0, reasons: ["Crypto has no company financials to assess."] } : scoreFundamentals(snap.fundamentals);
     const network = isCrypto ? scoreNetwork(snap.network) : { score: null, confidence: 0, reasons: ["Network activity applies to crypto only."] };
+    const flows = isCrypto ? scoreFlows(snap.flows) : { score: null, confidence: 0, reasons: ["Institutional flow tracking applies to crypto only."] };
     const risk = profileRisk(closes);
     const entries = [];
     if (trend.score != null) entries.push([trend.score, WEIGHTS.trend, trend.confidence]);
     if (analyst.score != null) entries.push([analyst.score, WEIGHTS.analyst, analyst.confidence]);
+    if (flows.score != null) entries.push([flows.score, WEIGHTS.flows, flows.confidence]);
     if (fundamentals.score != null) {
       entries.push([fundamentals.score, WEIGHTS.fundamentals, fundamentals.confidence]);
     }
     if (network.score != null) entries.push([network.score, WEIGHTS.network, network.confidence]);
     const missing = [];
     if (trend.score == null) missing.push("price trend");
-    if (analyst.score == null) missing.push("analyst forecasts");
+    if (!isCrypto && analyst.score == null) missing.push("analyst forecasts");
     if (!isCrypto && fundamentals.score == null) missing.push("company fundamentals");
     if (isCrypto && network.score == null) missing.push("on-chain network activity");
+    if (isCrypto && flows.score == null) missing.push("institutional flows");
     let composite = 0;
     let confidence = 0;
     if (entries.length > 0) {
       const wSum = entries.reduce((a, [, w]) => a + w, 0);
       composite = entries.reduce((a, [s, w]) => a + s * w, 0) / wSum;
       const cWeighted = entries.reduce((a, [, w, c]) => a + c * w, 0) / wSum;
-      const applicable = WEIGHTS.trend + WEIGHTS.analyst + (isCrypto ? WEIGHTS.network : WEIGHTS.fundamentals);
+      const applicable = WEIGHTS.trend + (isCrypto ? WEIGHTS.flows : WEIGHTS.analyst) + (isCrypto ? WEIGHTS.network : WEIGHTS.fundamentals);
       confidence = cWeighted * (wSum / applicable);
     }
     const { stars, caveats } = starsFor(composite, risk.band, confidence);
@@ -783,6 +877,7 @@ var MK = (() => {
       analyst,
       fundamentals,
       network,
+      flows,
       risk,
       caveats,
       missing
@@ -793,10 +888,14 @@ var MK = (() => {
       switch (by) {
         case "trend":
           return r.trend.score ?? -1;
+        // ⚠️ SORT BY THE SLOT, NOT BY THE PILLAR. Each key covers whichever half of its pair applies
+        // to the asset — otherwise tapping "what do the professionals think?" ranks every crypto row
+        // last on the grounds that no analyst covers it, while the app is showing flow data that
+        // answers exactly that question in the very same column.
         case "analyst":
-          return r.analyst.score ?? -1;
+          return r.analyst.score ?? r.flows.score ?? -1;
         case "fundamentals":
-          return r.fundamentals.score ?? -1;
+          return r.fundamentals.score ?? r.network.score ?? -1;
         case "risk":
           return -BAND_ORDER.indexOf(r.risk.band);
         default:
@@ -911,6 +1010,27 @@ var MK = (() => {
     }
     return stats;
   }
+  async function fetchFlows(id) {
+    if (id !== "bitcoin") return null;
+    try {
+      const res = await fetch("./data/flows.json", { cache: "no-cache" });
+      if (!res.ok) return null;
+      const raw = await res.json();
+      const rows = Array.isArray(raw.etfDaily) ? raw.etfDaily : [];
+      const clean = rows.filter((r) => Array.isArray(r) && typeof r[0] === "string" && Number.isFinite(r[1])).sort((a, b) => a[0] < b[0] ? -1 : 1);
+      const last = clean[clean.length - 1];
+      return {
+        etfDailyUsdM: clean.length > 0 ? clean.map((r) => r[1]) : null,
+        etfAsOf: last ? last[0] : null,
+        corpHoldingsBtc: raw.corpHoldingsBtc ?? null,
+        corpChangeBtc: raw.corpChangeBtc ?? null,
+        corpChangeDays: raw.corpChangeDays ?? null,
+        fetchedAt: raw.fetchedAt ?? null
+      };
+    } catch {
+      return null;
+    }
+  }
   var TD = "https://api.twelvedata.com";
   async function fetchEquityHistory(symbol, key) {
     const data = await getJson(
@@ -1011,6 +1131,14 @@ var MK = (() => {
           if (network) {
             snap.network = network;
             snap.sources = [...snap.sources ?? [], "Blockchain.com (on-chain activity)"];
+          }
+          const flows = await fetchFlows(item.id);
+          if (flows) {
+            snap.flows = flows;
+            snap.sources = [
+              ...snap.sources ?? [],
+              "Farside Investors via daily snapshot (ETF flows)"
+            ];
           }
           snapshots.push(snap);
         } else {
@@ -1202,13 +1330,15 @@ var MK = (() => {
 
     html += '<div class="bars">';
     html += barHtml("Trend", rating.trend);
-    html += barHtml("Forecasts", rating.analyst);
-    // Business and Network occupy one slot between them: a company has accounts and no chain, a
-    // crypto asset has a chain and no accounts. Showing both would put a permanent hatched "n/a"
-    // on every row for a pillar that could never apply to it, which is noise dressed as a gap.
+    // Two paired slots, each showing whichever half applies to this kind of asset. A company has
+    // accounts and analyst coverage; a crypto asset has a chain and institutional flows. Showing
+    // all four would put a permanent hatched "n/a" on every row for pillars that could never apply
+    // to it, which is noise dressed up as a gap.
     if (rating.kind === "crypto") {
+      html += barHtml("Flows", rating.flows);
       html += barHtml("Network", rating.network);
     } else {
+      html += barHtml("Forecasts", rating.analyst);
       html += barHtml("Business", rating.fundamentals);
     }
     html += "</div>";
@@ -1223,10 +1353,11 @@ var MK = (() => {
       }).join("");
     }
     html += "<h4>Trend</h4>" + listHtml(rating.trend.reasons);
-    html += "<h4>Published forecasts</h4>" + listHtml(rating.analyst.reasons);
     if (rating.kind === "crypto") {
+      html += "<h4>Institutional flows</h4>" + listHtml(rating.flows.reasons);
       html += "<h4>On-chain network</h4>" + listHtml(rating.network.reasons);
     } else {
+      html += "<h4>Published forecasts</h4>" + listHtml(rating.analyst.reasons);
       html += "<h4>Business data</h4>" + listHtml(rating.fundamentals.reasons);
     }
     html += "<h4>Risk</h4>" + listHtml(rating.risk.reasons);

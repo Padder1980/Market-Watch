@@ -216,7 +216,8 @@ input[type="text"] { font-family: var(--mono); }
   <div class="notice">
     <strong>These stars are not advice, and they are not a forecast.</strong>
     They count how many measurable signals currently line up — past price behaviour, published
-    analyst views, and reported company financials. Every star can be traced to its arithmetic:
+    analyst views, reported company financials, and for Bitcoin the money that has already moved
+    into or out of the ETFs plus how busy the chain is. Every star can be traced to its arithmetic:
     open <em>Show the working</em> on any row. Momentum is also the mechanism by which people buy
     tops, so the risk band is a hard cap, never an average.
   </div>
@@ -224,13 +225,13 @@ input[type="text"] { font-family: var(--mono); }
   <div class="chips" id="chips">
     <button class="chip" data-sort="stars" aria-pressed="true">Overall</button>
     <button class="chip" data-sort="trend" aria-pressed="false">Trending up</button>
-    <button class="chip" data-sort="analyst" aria-pressed="false">Forecast growth</button>
-    <button class="chip" data-sort="fundamentals" aria-pressed="false">Business data</button>
+    <button class="chip" data-sort="analyst" aria-pressed="false">Forecasts &amp; flows</button>
+    <button class="chip" data-sort="fundamentals" aria-pressed="false">Business &amp; network</button>
     <button class="chip" data-sort="risk" aria-pressed="false">Lowest risk</button>
   </div>
 
   <div id="list"></div>
-  <div class="foot">Build __BUILD__ · data from CoinGecko, Blockchain.com, Twelve Data and Finnhub · nothing leaves this device except calls to those APIs</div>
+  <div class="foot">Build __BUILD__ · data from CoinGecko, Blockchain.com, Twelve Data, Finnhub, and Farside Investors via a daily snapshot · nothing leaves this device except calls to those APIs</div>
 </div>
 
 <div class="sheet-ov" id="setOv">
@@ -415,13 +416,15 @@ input[type="text"] { font-family: var(--mono); }
 
     html += '<div class="bars">';
     html += barHtml("Trend", rating.trend);
-    html += barHtml("Forecasts", rating.analyst);
-    // Business and Network occupy one slot between them: a company has accounts and no chain, a
-    // crypto asset has a chain and no accounts. Showing both would put a permanent hatched "n/a"
-    // on every row for a pillar that could never apply to it, which is noise dressed as a gap.
+    // Two paired slots, each showing whichever half applies to this kind of asset. A company has
+    // accounts and analyst coverage; a crypto asset has a chain and institutional flows. Showing
+    // all four would put a permanent hatched "n/a" on every row for pillars that could never apply
+    // to it, which is noise dressed up as a gap.
     if (rating.kind === "crypto") {
+      html += barHtml("Flows", rating.flows);
       html += barHtml("Network", rating.network);
     } else {
+      html += barHtml("Forecasts", rating.analyst);
       html += barHtml("Business", rating.fundamentals);
     }
     html += "</div>";
@@ -436,10 +439,11 @@ input[type="text"] { font-family: var(--mono); }
       }).join("");
     }
     html += "<h4>Trend</h4>" + listHtml(rating.trend.reasons);
-    html += "<h4>Published forecasts</h4>" + listHtml(rating.analyst.reasons);
     if (rating.kind === "crypto") {
+      html += "<h4>Institutional flows</h4>" + listHtml(rating.flows.reasons);
       html += "<h4>On-chain network</h4>" + listHtml(rating.network.reasons);
     } else {
+      html += "<h4>Published forecasts</h4>" + listHtml(rating.analyst.reasons);
       html += "<h4>Business data</h4>" + listHtml(rating.fundamentals.reasons);
     }
     html += "<h4>Risk</h4>" + listHtml(rating.risk.reasons);

@@ -1,0 +1,45 @@
+name: Paper round
+
+# Reads the freely published ETF-flow and treasury pages once a day and commits the numbers to
+# data/flows.json, which the app reads from its own origin. See tools/paper-round.ts for why this
+# exists (short version: the CORS rule only applies inside browsers, so a server-side robot can read
+# what the page cannot).
+
+on:
+  schedule:
+    # 21:40 UTC — Farside publishes in the US evening, so this lands after the day's rows are up.
+    - cron: "40 21 * * 1-6"
+  workflow_dispatch:
+
+# The job commits to the repo, so it needs write access. Nothing else.
+permissions:
+  contents: write
+
+concurrency:
+  group: paper-round
+  cancel-in-progress: false
+
+jobs:
+  round:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Fetch and update the snapshot
+        run: node tools/paper-round.ts
+
+      - name: Commit if anything changed
+        run: |
+          if git diff --quiet -- data/flows.json; then
+            echo "No change to data/flows.json"
+            exit 0
+          fi
+          git config user.name "market-watch-bot"
+          git config user.email "market-watch-bot@users.noreply.github.com"
+          git add data/flows.json
+          git commit -m "Paper round: flow snapshot $(date -u +%Y-%m-%d)"
+          git push

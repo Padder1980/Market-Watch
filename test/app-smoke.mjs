@@ -56,8 +56,28 @@ await page.addInitScript(() => {
     }
     return { values };
   };
+  // The paper round's output, as the page will find it next to itself. Two hundred days of modest
+  // flows then a strong recent week, so the Flows pillar has a real, positive verdict to draw.
+  const etfDaily = [];
+  for (let i = 0; i < 210; i++) {
+    const d = new Date(start + (i + 150) * 86400000).toISOString().slice(0, 10);
+    etfDaily.push([d, i < 190 ? 120 * Math.sin(i / 2.5) : 400 + 30 * Math.sin(i)]);
+  }
+  // ⚠️ Dated TODAY. The staleness gate refuses anything older than a week, so a fixture with a
+  // hardcoded past date would test the refusal path while appearing to test the happy one.
+  etfDaily[etfDaily.length - 1][0] = new Date().toISOString().slice(0, 10);
+  const flowsJson = {
+    etfDaily,
+    corpHoldingsBtc: 1262540,
+    corpChangeBtc: 28000,
+    corpChangeDays: 30,
+    fetchedAt: new Date().toISOString().slice(0, 10),
+  };
   window.fetch = async (url) => {
     const u = String(url);
+    if (u.includes("data/flows.json")) {
+      return { ok: true, status: 200, json: async () => flowsJson };
+    }
     if (u.includes("coingecko")) {
       return { ok: true, status: 200, json: async () => ({ prices }) };
     }
@@ -93,22 +113,41 @@ check("both default watchlist rows rendered", cards === 2, `got ${cards}`);
 const stars = await page.locator(".card").first().locator(".stars").count();
 check("a star rating is drawn", stars === 1);
 
-// The critical one: crypto has no analyst coverage, and that bar must say so rather than sit empty.
-// ⚠️ It is ONE bar now, not two. Crypto used to show an empty "Business" pillar it could never fill;
-// it now shows "Network" in that slot instead, which it can. If this count moves again, check which
-// pillar changed before relaxing the number — an n/a that quietly became a zero looks identical here.
-const naLabels = await page.locator(".card").first().locator(".bar.na .num").allTextContents();
+// ⚠️ WITH BOTH CRYPTO PILLARS FED, THE FIRST CARD SHOULD HAVE NO n/a BARS AT ALL. Crypto used to
+// show two empty pillars it could never fill (analyst coverage, company accounts); it now shows the
+// two it can (Flows, Network). The SECOND card is Ethereum, which has neither — that is where the
+// n/a rendering is still proved, and it must stay proved somewhere or the whole absent-is-not-bad
+// contract loses its only visual test.
+const naFirst = await page.locator(".card").first().locator(".bar.na").count();
+check("a fully-fed crypto row has no empty pillars", naFirst === 0, `got ${naFirst}`);
+
+const naLabels = await page.locator(".card").nth(1).locator(".bar.na .num").allTextContents();
 check(
   "unavailable pillars render as n/a, never as an empty bar",
-  naLabels.length === 1 && naLabels.every((t) => t.trim() === "n/a"),
+  naLabels.length === 2 && naLabels.every((t) => t.trim() === "n/a"),
   JSON.stringify(naLabels),
 );
 
 const barLabels = await page.locator(".card").first().locator(".bar .lbl").allTextContents();
 check(
-  "crypto is offered a Network pillar, not a Business one it can never have",
-  barLabels.some((t) => /network/i.test(t)) && !barLabels.some((t) => /business/i.test(t)),
+  "crypto is offered Flows and Network, not the two pillars it can never have",
+  barLabels.some((t) => /flows/i.test(t)) && barLabels.some((t) => /network/i.test(t)) &&
+    !barLabels.some((t) => /business|forecasts/i.test(t)),
   JSON.stringify(barLabels),
+);
+
+// End to end: the robot's file reaches a drawn bar. This is the one check that would catch the
+// paper round being wired to a path the page never asks for.
+const flowGeom = await page.locator(".card").first().locator(".bar").nth(1).evaluate((el) => {
+  const num = el.querySelector(".num");
+  const fill = el.querySelector(".fill");
+  const r = fill ? fill.getBoundingClientRect() : null;
+  return { num: num ? num.textContent.trim() : null, w: r ? r.width : 0, h: r ? r.height : 0 };
+});
+check(
+  "the flows pillar scores the snapshot and draws it",
+  /^\d+$/.test(flowGeom.num || "") && Number(flowGeom.num) > 50 && flowGeom.w > 1 && flowGeom.h > 1,
+  JSON.stringify(flowGeom),
 );
 
 // End-to-end proof that the on-chain fetch reaches the screen: the Network bar must carry a real
@@ -151,7 +190,22 @@ await page.locator(".card").first().locator(".more summary").click();
 const working = await page.locator(".card").first().locator(".working").innerText();
 check("the working names the risk band evidence", /volatility/i.test(working));
 check("the working explains the composite", /Composite score \d+\/100/.test(working));
-check("the working states what was missing", /without .*(analyst|fundamentals)/i.test(working));
+// ⚠️ THE "WHAT WAS MISSING" CAVEAT MOVED CARDS, AND THAT IS THE CORRECT OUTCOME. Bitcoin now has
+// every applicable pillar fed, so it should carry NO partial-picture caveat — asserting one here
+// would force the app to apologise for a complete answer. Ethereum has neither flows nor on-chain
+// data, so it is where the caveat belongs and where it is now proved.
+check(
+  "a fully-fed row does not apologise for a complete picture",
+  !/picture is partial/i.test(working),
+  working.slice(0, 200),
+);
+await page.locator(".card").nth(1).locator(".more summary").click();
+const workingEth = await page.locator(".card").nth(1).locator(".working").innerText();
+check(
+  "the working states what was missing",
+  /without .*(flows|network)/i.test(workingEth) && /picture is partial/i.test(workingEth),
+  workingEth.slice(0, 300),
+);
 // ⚠️ Read this AFTER the summary click. `innerText` on a collapsed <details> returns an empty
 // string, which every one of these regexes would fail against — a real failure and a hidden panel
 // are indistinguishable from the assertion's point of view.
@@ -159,6 +213,16 @@ check(
   "the network working shows its evidence",
   /hash rate/i.test(working) && /active addresses/i.test(working),
   working.slice(0, 200),
+);
+check(
+  "the flows working names its numbers and its source",
+  /spot Bitcoin ETFs/i.test(working) && /Public companies/i.test(working),
+  working.slice(0, 300),
+);
+check(
+  "the flows working refuses to sound like a forecast",
+  /already moved/i.test(working) && /near tops before/i.test(working),
+  working.slice(0, 300),
 );
 check(
   "the network working refuses to sound like a forecast",

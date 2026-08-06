@@ -14,6 +14,7 @@ import type {
   AnalystConsensus,
   AssetSnapshot,
   Candle,
+  FlowStats,
   Fundamentals,
   NetworkStats,
 } from "./types.ts";
@@ -200,6 +201,57 @@ export async function fetchBitcoinNetwork(id: string): Promise<NetworkStats | nu
 }
 
 // ---------------------------------------------------------------------------------------------
+// The paper round — institutional flows, read from our own origin
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * Institutional flow data, fetched from `data/flows.json` NEXT TO THE PAGE.
+ *
+ * ⚠️ THIS IS THE WHOLE WORKAROUND, AND IT IS WORTH UNDERSTANDING BEFORE CHANGING IT. Farside and the
+ * treasuries pages publish these numbers freely but send no CORS header, so a browser cannot read
+ * them — the same wall that rules out Stooq and the RSS feeds. The CORS rule only exists INSIDE
+ * browsers, so a GitHub Action reads those pages server-side once a day and commits the result into
+ * this repo. The page then reads its own file, from its own origin, where no permission is needed.
+ * The app still scrapes nothing, still holds no key, and still has no server.
+ *
+ * ⚠️ A RELATIVE URL IS LOAD-BEARING. `./data/flows.json` resolves against wherever the page is
+ * served from — GitHub Pages, a local file, a phone's Home Screen copy — so the app keeps working
+ * from all three. An absolute URL to the Pages site would make every local copy phone home, and
+ * would reintroduce the cross-origin problem this design exists to avoid.
+ *
+ * A 404 is the NORMAL case before the robot's first run, and is not an error.
+ */
+export async function fetchFlows(id: string): Promise<FlowStats | null> {
+  if (id !== "bitcoin") return null;
+  try {
+    const res = await fetch("./data/flows.json", { cache: "no-cache" });
+    if (!res.ok) return null;
+    const raw = (await res.json()) as {
+      etfDaily?: [string, number][];
+      corpHoldingsBtc?: number | null;
+      corpChangeBtc?: number | null;
+      corpChangeDays?: number | null;
+      fetchedAt?: string | null;
+    };
+    const rows = Array.isArray(raw.etfDaily) ? raw.etfDaily : [];
+    const clean = rows
+      .filter((r) => Array.isArray(r) && typeof r[0] === "string" && Number.isFinite(r[1]))
+      .sort((a, b) => (a[0] < b[0] ? -1 : 1));
+    const last = clean[clean.length - 1];
+    return {
+      etfDailyUsdM: clean.length > 0 ? clean.map((r) => r[1]) : null,
+      etfAsOf: last ? last[0] : null,
+      corpHoldingsBtc: raw.corpHoldingsBtc ?? null,
+      corpChangeBtc: raw.corpChangeBtc ?? null,
+      corpChangeDays: raw.corpChangeDays ?? null,
+      fetchedAt: raw.fetchedAt ?? null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------------------------
 // Twelve Data — daily price history for equities and ETFs
 // ---------------------------------------------------------------------------------------------
 
@@ -377,6 +429,14 @@ export async function loadWatchlist(
         if (network) {
           snap.network = network;
           snap.sources = [...(snap.sources ?? []), "Blockchain.com (on-chain activity)"];
+        }
+        const flows = await fetchFlows(item.id);
+        if (flows) {
+          snap.flows = flows;
+          snap.sources = [
+            ...(snap.sources ?? []),
+            "Farside Investors via daily snapshot (ETF flows)",
+          ];
         }
         snapshots.push(snap);
       } else {

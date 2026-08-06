@@ -68,6 +68,31 @@ export interface NetworkStats {
   windowDays?: number | null;
 }
 
+/**
+ * Institutional flow measurements for a crypto asset, delivered by the "paper round" — a GitHub
+ * Action that reads freely published pages once a day server-side (where the CORS wall does not
+ * exist) and commits the numbers as `data/flows.json`, which the page then reads from its own
+ * origin. The app itself never scrapes anything.
+ *
+ * ⚠️ EVERY FIELD CARRIES ITS DATE, AND STALENESS IS A SCORING CONCERN. A scraper breaks silently —
+ * the site changes its layout and the robot stops committing — so the file's dates are the only
+ * thing standing between "current evidence" and "last month's numbers wearing today's stars".
+ * `scoreFlows` refuses data older than its tolerance rather than trusting it quietly.
+ */
+export interface FlowStats {
+  /** Daily net flow into US spot ETFs, US$ millions, chronological, most recent last. */
+  etfDailyUsdM?: number[] | null;
+  /** ISO date of the last ETF flow row. */
+  etfAsOf?: string | null;
+  /** Total BTC held by public companies at the latest snapshot. */
+  corpHoldingsBtc?: number | null;
+  /** Change in that total over `corpChangeDays`. Null until enough snapshots accumulate. */
+  corpChangeBtc?: number | null;
+  corpChangeDays?: number | null;
+  /** ISO date the robot last ran. */
+  fetchedAt?: string | null;
+}
+
 /** Everything the scorer needs about one asset. Assembled by the providers, consumed by `rateAsset`. */
 export interface AssetSnapshot {
   id: string;
@@ -82,6 +107,7 @@ export interface AssetSnapshot {
   consensus?: AnalystConsensus | null;
   fundamentals?: Fundamentals | null;
   network?: NetworkStats | null;
+  flows?: FlowStats | null;
   /** Where each part came from, for the "show your working" panel. */
   sources?: string[];
 }
@@ -124,6 +150,8 @@ export interface Rating {
   fundamentals: Pillar;
   /** Crypto only. Scores `null` for equities, where it is not applicable rather than missing. */
   network: Pillar;
+  /** Crypto only — the crypto occupant of the analyst slot (revealed preference vs stated opinion). */
+  flows: Pillar;
   risk: RiskProfile;
   /** Why the stars are what they are, including any cap that bit. */
   caveats: string[];

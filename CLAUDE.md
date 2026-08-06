@@ -34,9 +34,13 @@ repo.
 ```
 src/             pure TypeScript engine, no runtime dependencies, fully unit-tested
   indicators.ts    moving averages, RSI, drawdown, volatility, trend fit
-  score.ts         the four pillars, the composite, the caps
+  score.ts         the pillars, the composite, the caps
   providers.ts     API adapters (browser fetch)
+  flows-parse.ts   pure parsers for the paper round's HTML — no fetch, so they are unit-testable
   types.ts         shared types
+tools/           NOT shipped to the browser
+  paper-round.ts   the daily robot: reads free pages server-side, writes data/flows.json
+data/flows.json  committed by the robot; the page fetches it from its own origin
 entry.ts         the engine's public surface, bundled to the browser global `MK`
 shell.html       the page: markup, CSS, and all the UI code
 build.ts         esbuild bundles `entry.ts` and inlines it into shell.html -> index.html
@@ -57,8 +61,9 @@ moving the markup into a template literal in `build.ts`.**
 npm ci                         # once
 node build.ts                  # rebuild index.html — run after ANY edit to src/, entry.ts or shell.html
 npx tsc --noEmit               # typecheck (must be clean)
-node --test "test/*.test.ts"   # 35 engine tests
-node test/app-smoke.mjs        # 16 browser checks against the BUILT page
+node --test "test/*.test.ts"   # 54 engine tests
+node test/app-smoke.mjs        # 25 browser checks against the BUILT page
+node tools/paper-round.ts --dry  # the daily robot, without writing anything
 npm run check                  # all four, in that order
 ```
 
@@ -78,7 +83,8 @@ Playwright is global in this sandbox: `/opt/node22/lib/node_modules/playwright`,
 
 `RISK_STAR_CAP` in `src/score.ts`. Very-high risk tops out at **3 stars**, high at **4**, however
 strong everything else looks. The other three pillars combine into a 0–100 composite
-(`WEIGHTS` = trend 0.45, analyst 0.25, fundamentals 0.30); risk is applied afterwards as a ceiling.
+(`WEIGHTS` = trend 0.45, then two paired slots: analyst/flows 0.25 and fundamentals/network 0.30);
+risk is applied afterwards as a ceiling.
 
 If risk were averaged in like the others, a 90-on-trend and a 20-on-risk would blend to a
 comfortable-looking 55 — and the number that matters most to someone deciding what they can afford
@@ -187,6 +193,81 @@ says the same thing twice — *"Ignore: headlines lacking on-chain or macro supp
 price predictions without methodology"*. Do not build a sentiment pillar. If news is ever wanted it
 is as a **linked reading list**, not as a number.
 
+### THE PAPER ROUND — how pile 2's "unreachable" data is reached (2026-08-06)
+
+⚠️ **"IT NEEDS A PAID SUBSCRIPTION" WAS TOO QUICK, AND THE OWNER WAS RIGHT TO PUSH BACK.** Farside
+publishes the full daily US spot ETF flow table free, and the treasuries pages publish holdings free.
+What costs money is the *machine-readable API*, not the numbers. What blocks the app from reading the
+free pages is CORS — **and the CORS rule exists only inside browsers.**
+
+So: `.github/workflows/paper-round.yml` runs `tools/paper-round.ts` on GitHub's servers once a day,
+reads those pages server-side, and commits `data/flows.json` into this repo. The page fetches
+`./data/flows.json` **from its own origin**, where no permission is needed. The app still scrapes
+nothing, holds no key, and has no server. Cost: £0.
+
+⚠️ **A RELATIVE URL IS LOAD-BEARING.** `./data/flows.json` resolves against wherever the page is
+served from — Pages, a local file, a Home Screen copy — so all three keep working. An absolute URL
+would make every local copy phone home AND reintroduce the cross-origin problem this design exists
+to avoid.
+
+⚠️ **THE ROBOT MUST REFUSE TO WRITE RATHER THAN WRITE A GUESS.** A scraper's failure mode is not an
+error, it is a plausible wrong number inheriting the trust the right one had. Hence `saneFlows()`:
+row count, newest-date age, and a magnitude band no real daily net flow has approached. A rejection
+names what it saw and exits non-zero so the Action goes red; the previous file is left untouched.
+
+⚠️ **AND THE APP MUST NOT TRUST A STALE FILE EITHER.** `FLOWS_STALE_DAYS` (7) makes `scoreFlows`
+refuse data older than a week. Without it, June's inflow keeps earning August's stars for as long as
+nobody notices the robot stopped delivering. Broken looks broken twice: red Action, then `n/a`.
+
+⚠️ **MERGE, NEVER REPLACE.** The short table carries only recent days. Replacing with it would throw
+away the history the rolling windows self-calibrate against, and the pillar would go quiet for weeks
+with nothing in the logs to explain it.
+
+⚠️ **THE CORPORATE CHANGE IS DERIVED FROM OUR OWN SNAPSHOT LOG, NOT FROM THE PAGE.** One reading is a
+level, not a movement, and nobody publishes "BTC added this month" machine-readably. The robot logs a
+level a day and the change appears once two readings sit ≥14 days apart. **It is empty on day one by
+design**, and `scoreFlows` says so on screen rather than scoring a number it does not have.
+
+⚠️ **PARSER RULES.** Only rows whose FIRST cell is a date enter the series — the table ends with
+Total / Average / Maximum / Minimum rows whose last cell is also a number, and taking rows by
+position gains a "day" worth two and a half years of flows. Parentheses are a MINUS SIGN; read as
+positive, a day of heavy selling becomes a day of heavy buying. `parseTreasuriesTotal` is
+deliberately strict and allowed to fail (600k–3,000k BTC band) — loosening it to "first big number
+on the page" is how a market cap becomes a holdings figure with nobody noticing.
+
+⚠️ **THE PARSERS HAVE NEVER SEEN THE REAL PAGES.** They were written and tested against fixture HTML
+because this sandbox's proxy blocks those hosts (403 on every one, same as CoinGecko and
+mempool.space — nothing to do with the sites). **The first real Action run is the actual test.** If
+it goes red with "table not recognised", that is the design working: read the logged byte count and
+sample, fix the parser against what the page really says, do not loosen the sanity gate to make it
+pass.
+
+⚠️ **BE A GOOD CITIZEN.** These are free publishers doing us a favour. One request a day, an
+identifying User-Agent naming the repo, and if any of them object the paid API is the proper route.
+
+### The Flows pillar
+
+`scoreFlows` reads what the paper round delivers. Two components: rolling 5-day and 20-day net ETF
+flow, and the change in public-company holdings.
+
+⚠️ **IT SITS IN THE ANALYST SLOT ON MERIT.** Both answer "what do the professionals think?" —
+analysts by stating a view, allocators by moving money. `WEIGHTS.flows` therefore equals
+`WEIGHTS.analyst` exactly, the same pairing rule as network/fundamentals, which keeps the applicable
+total at 1.0 for both asset kinds so the confidence denominator does not shift with type.
+
+⚠️ **SELF-CALIBRATING AGAINST ITS OWN HISTORY, like `stretchPercentile`.** "Is $626m a lot?" has no
+constant answer — it depends what this market's ordinary week looks like, and any hardcoded threshold
+would rot as the ETFs grow. The yardstick is the median absolute rolling sum across the whole
+history, scored against ±3× that.
+
+⚠️ **THE SIGN IS PRESERVED BY CONSTRUCTION — a net outflow can NEVER score above 50.** A plain
+percentile rank would break this: in a year dominated by outflows, "less bad than usual" ranks high
+while money is actually leaving. Same direction-inversion trap the running app's flags engine
+documents, in a new place. A test asserts it.
+
+⚠️ **Crypto's `missing` list changed again**, consistently: analysts do not cover crypto and never
+will, so for a crypto asset the absent thing in that slot is the FLOW data, not analyst forecasts.
+
 ### What is BUILT of pile 2 (prototype, 2026-08-06): the Network pillar
 
 `scoreNetwork` + `fetchBitcoinNetwork` cover **signals 4 and 8** — on-chain activity and miner
@@ -232,13 +313,14 @@ first-vs-last would report a quarter's trend from two arbitrary days, with a con
 null; the price fetch is the load-bearing one. An asset the user can still see beats a row that
 failed on an extra.
 
-**Still NOT built from pile 2, and the reason is cost, not difficulty:** ETF flows (his #1),
-institutional purchases (#2) and exchange reserves (#3) — his three highest priorities. Every
-provider of them is a paid subscription. Glassnode's API is a Professional-plan add-on (historically
-~$999/month; the $49 Advanced tier is capped at 50 calls a day and the free tier has no API key at
-all); CryptoQuant and CoinGlass are the same shape. **Do not approximate them with something free
-that answers a different question** — a cheaper proxy for "are institutions buying?" that is really
-measuring something else is worse than the honest `n/a` the app shows today.
+**Still NOT built: exchange reserves (his #3).** ETF flows (#1) and institutional purchases
+(#2) are now delivered by the paper round above. Reserves are the one that resisted: the free views
+live inside chart pages (CryptoQuant, CoinGlass) rather than in an HTML table, so there is nothing
+for a parser of this kind to read, and the APIs are paid — Glassnode's is a Professional-plan add-on
+(historically ~$999/month; the $49 Advanced tier allows 50 calls a DAY and the free tier has no API
+key at all). **Do not approximate it with something free that answers a different question** — a
+cheaper proxy for "are coins leaving exchanges?" that really measures something else is worse than
+the honest `n/a`. A same-shaped paper-round parser is the route if a readable free source is found.
 
 **Pile 2 — the data. THIS IS THE REAL WORK, and it is the one he asked to prototype.**
 His Tier 3 and his `SignalPriority`, in his order of importance:
@@ -296,9 +378,21 @@ be phrased as a recommendation to buy or sell.
 
 ## Current status
 
-Migrated from Inte-Run and standing on its own: build clean, `tsc --noEmit` clean, 35 engine tests
-passing, 16 browser smoke checks passing. Nothing has changed functionally since the original build —
-the move restructured `market/engine/*` to `src/*`, lifted the rest to the repo root, repointed the
-relative imports, and gave the project its own `package.json`, `tsconfig.json` and `.gitignore`.
+Standing on its own since the move from Inte-Run (2026-08-06). Build clean, `tsc --noEmit` clean,
+**54 engine tests** passing, **25 browser smoke checks** passing.
+
+Since the move: a **Network pillar** (Bitcoin on-chain activity and miner behaviour, from
+Blockchain.com) and a **Flows pillar** fed by the **paper round** (US spot ETF flows and
+public-company holdings, via a daily GitHub Action). Together those cover four of the owner's eight
+stated signals — ETF flows, institutional purchases, on-chain activity and miner behaviour.
+
+⚠️ **THE PAPER ROUND HAS NOT YET RUN AGAINST THE REAL PAGES.** This sandbox's proxy blocks those
+hosts, so the parsers are proved only against fixture HTML. **Watch the first scheduled Action run**
+(21:40 UTC, Mon–Sat) or trigger it by hand from the Actions tab. If it goes red with "table not
+recognised", read the logged byte count, fix the parser against what the page really says, and do
+not loosen `saneFlows` to make it pass.
+
+Not built: exchange reserves (the owner's #3) — see the paper-round section for why, and for the
+shape a fix would take.
 
 Update this section as you go.

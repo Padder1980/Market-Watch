@@ -25,6 +25,7 @@
 import type {
   AnalystConsensus,
   AssetSnapshot,
+  FlowStats,
   Fundamentals,
   NetworkStats,
   Pillar,
@@ -49,12 +50,21 @@ import {
 /**
  * Pillar weights in the composite. Trend is heaviest because it is the question asked first.
  *
- * ⚠️ `network` CARRIES EXACTLY THE SAME WEIGHT AS `fundamentals`, AND THAT IS LOAD-BEARING. The two
- * are mutually exclusive — a company has accounts and no chain, a crypto asset has a chain and no
- * accounts — so they occupy one slot between them. Equal weights keep the applicable total at 1.0
- * for both kinds, which means the confidence denominator does not silently change with asset type.
+ * ⚠️ THE WEIGHTS ARE PAIRED INTO SLOTS, AND THE PAIRING IS LOAD-BEARING. `network` carries exactly
+ * `fundamentals`' weight and `flows` carries exactly `analyst`'s, because each pair is mutually
+ * exclusive: a company has accounts and analyst coverage; a crypto asset has a chain and
+ * institutional flows. (Flows sit in the analyst slot on merit, not convenience — both answer "what
+ * do the professionals think?", analysts by stating it, allocators by moving money.) Equal weights
+ * per slot keep the applicable total at 1.0 for both kinds, which means the confidence denominator
+ * does not silently change with asset type.
  */
-export const WEIGHTS = { trend: 0.45, analyst: 0.25, fundamentals: 0.3, network: 0.3 } as const;
+export const WEIGHTS = {
+  trend: 0.45,
+  analyst: 0.25,
+  fundamentals: 0.3,
+  network: 0.3,
+  flows: 0.25,
+} as const;
 
 /**
  * Star thresholds on the 0–100 composite, before caps.
@@ -425,6 +435,148 @@ export function scoreNetwork(n: NetworkStats | null | undefined): Pillar {
 }
 
 // ---------------------------------------------------------------------------------------------
+// Pillar 2b — FLOWS (crypto's answer to analyst forecasts)
+// ---------------------------------------------------------------------------------------------
+
+/** Data older than this is refused, not discounted — a stale scrape must read as absent. */
+export const FLOWS_STALE_DAYS = 7;
+
+/** Rolling sums shorter than this cannot self-calibrate and are not scored. */
+const FLOWS_MIN_HISTORY = 40;
+
+/** The two windows scored: the last week of trading and the last month. */
+const FLOW_WINDOWS = [5, 20] as const;
+
+function daysBetween(isoThen: string, nowMs: number): number | null {
+  const then = Date.parse(`${isoThen}T00:00:00Z`);
+  if (!Number.isFinite(then)) return null;
+  return (nowMs - then) / 86_400_000;
+}
+
+function usdM(x: number): string {
+  const a = Math.abs(x);
+  return a >= 1000 ? `$${(a / 1000).toFixed(1)}bn` : `$${Math.round(a)}m`;
+}
+
+/**
+ * Score one rolling window of net ETF flow against the asset's OWN flow history.
+ *
+ * ⚠️ SELF-CALIBRATING, LIKE `stretchPercentile`, AND FOR THE SAME REASON. "Is $626m over three days
+ * a lot?" has no constant answer — it depends what this market's ordinary week looks like, and any
+ * hardcoded threshold would rot as the ETFs grow. The yardstick is the median absolute rolling sum
+ * across the whole history: the window's sum is scored against ±3× that typical size.
+ *
+ * ⚠️ THE SIGN IS PRESERVED BY CONSTRUCTION — a net outflow can never score above 50 and a net inflow
+ * can never score below it. A pure percentile rank would break that: in a year dominated by
+ * outflows, "less bad than usual" ranks high while money is actually leaving, which is the
+ * direction-inversion trap the running app's flags engine documents.
+ */
+function scoreFlowWindow(daily: number[], win: number): { score: number; sum: number; scale: number } | null {
+  if (daily.length < Math.max(FLOWS_MIN_HISTORY, win * 2)) return null;
+  const sums: number[] = [];
+  let acc = 0;
+  for (let i = 0; i < daily.length; i++) {
+    acc += daily[i] as number;
+    if (i >= win) acc -= daily[i - win] as number;
+    if (i >= win - 1) sums.push(acc);
+  }
+  const absSorted = sums.map(Math.abs).sort((a, b) => a - b);
+  const scale = absSorted[Math.floor(absSorted.length / 2)] as number;
+  if (!Number.isFinite(scale) || scale <= 0) return null;
+  const sum = sums[sums.length - 1] as number;
+  return { score: ramp(sum, -3 * scale, 3 * scale), sum, scale };
+}
+
+/**
+ * Are the people who allocate real money moving it in or out?
+ *
+ * The crypto occupant of the analyst slot: analysts state a view, allocators reveal one. Two
+ * components — US spot ETF net flows (daily, from the paper round's snapshot) and the change in
+ * public-company treasury holdings — each absent-not-bad, the pillar renormalising over what is
+ * present.
+ */
+export function scoreFlows(f: FlowStats | null | undefined, nowMs = Date.now()): Pillar {
+  if (!f) {
+    return { score: null, confidence: 0, reasons: ["No institutional flow data available."] };
+  }
+  const reasons: string[] = [];
+  const parts: number[] = [];
+  const confs: number[] = [];
+
+  const daily = Array.isArray(f.etfDailyUsdM)
+    ? f.etfDailyUsdM.filter((x) => Number.isFinite(x))
+    : [];
+  const etfAge = f.etfAsOf ? daysBetween(f.etfAsOf, nowMs) : null;
+
+  // ⚠️ THE STALENESS GATE IS THE POINT OF THE DATES. The scraper's failure mode is going quiet, and
+  // without this gate last month's inflow would keep earning today's stars for as long as nobody
+  // noticed. The tolerance is a week: ETF flow rows legitimately lag trading days and long weekends.
+  if (daily.length > 0 && etfAge != null && etfAge > FLOWS_STALE_DAYS) {
+    reasons.push(
+      `ETF flow data ends ${Math.round(etfAge)} days ago — too old to trust, so it is treated as ` +
+        "absent rather than believed.",
+    );
+  } else if (daily.length > 0) {
+    for (const win of FLOW_WINDOWS) {
+      const w = scoreFlowWindow(daily, win);
+      if (!w) continue;
+      parts.push(w.score);
+      const label = win === 5 ? "week" : "month";
+      const verb = w.sum >= 0 ? "took in" : "shed";
+      reasons.push(
+        `US spot Bitcoin ETFs ${verb} ${usdM(w.sum)} over the last trading ${label} — about ` +
+          `${(Math.abs(w.sum) / w.scale).toFixed(1)}× the typical ${label}'s move since launch.`,
+      );
+    }
+    if (parts.length > 0) confs.push(Math.min(1, daily.length / 120));
+  }
+
+  const corpAge = f.fetchedAt ? daysBetween(f.fetchedAt, nowMs) : null;
+  if (
+    f.corpChangeBtc != null && Number.isFinite(f.corpChangeBtc) &&
+    f.corpHoldingsBtc != null && Number.isFinite(f.corpHoldingsBtc) && f.corpHoldingsBtc > 0 &&
+    f.corpChangeDays != null && f.corpChangeDays >= 14 &&
+    (corpAge == null || corpAge <= FLOWS_STALE_DAYS)
+  ) {
+    const frac = f.corpChangeBtc / f.corpHoldingsBtc;
+    parts.push(ramp(frac, -0.03, 0.03));
+    confs.push(0.6);
+    const verb = f.corpChangeBtc >= 0 ? "added" : "shed";
+    reasons.push(
+      `Public companies ${verb} ${Math.round(Math.abs(f.corpChangeBtc)).toLocaleString("en-GB")} BTC ` +
+        `over the last ${Math.round(f.corpChangeDays)} days ` +
+        `(holdings ${Math.round(f.corpHoldingsBtc).toLocaleString("en-GB")} BTC).`,
+    );
+  } else if (f.corpHoldingsBtc != null && Number.isFinite(f.corpHoldingsBtc)) {
+    // Day one of the paper round: one snapshot is a level, not a movement. Say so instead of
+    // scoring it — the component warms up as daily snapshots accumulate.
+    reasons.push(
+      "Public-company holdings recorded; the change becomes measurable once a couple of weeks of " +
+        "daily snapshots accumulate.",
+    );
+  }
+
+  const score = meanOf(parts.length > 0 ? parts : [null]);
+  if (score == null) {
+    return {
+      score: null,
+      confidence: 0,
+      reasons: reasons.length > 0 ? reasons : ["No institutional flow data available."],
+    };
+  }
+  // ⚠️ Same contract as the network pillar, and even more necessary here — flows are the input most
+  // likely to be read as "the smart money knows". They describe money that has already moved.
+  reasons.push(
+    "Flows describe money that has already moved. They are not a price forecast, and heavy inflows " +
+      "have arrived near tops before.",
+  );
+  const confidence = confs.length > 0
+    ? confs.reduce((a, b) => a + b, 0) / confs.length * (parts.length >= 2 ? 1 : 0.7)
+    : 0;
+  return { score, confidence: clamp(confidence, 0, 1), reasons };
+}
+
+// ---------------------------------------------------------------------------------------------
 // Pillar 4 — RISK (a cap, not an average)
 // ---------------------------------------------------------------------------------------------
 
@@ -562,12 +714,16 @@ export function rateAsset(snap: AssetSnapshot): Rating {
   const network = isCrypto
     ? scoreNetwork(snap.network)
     : { score: null, confidence: 0, reasons: ["Network activity applies to crypto only."] };
+  const flows = isCrypto
+    ? scoreFlows(snap.flows)
+    : { score: null, confidence: 0, reasons: ["Institutional flow tracking applies to crypto only."] };
   const risk = profileRisk(closes);
 
   // Renormalise the weights over whichever pillars produced a score.
   const entries: [number, number, number][] = [];
   if (trend.score != null) entries.push([trend.score, WEIGHTS.trend, trend.confidence]);
   if (analyst.score != null) entries.push([analyst.score, WEIGHTS.analyst, analyst.confidence]);
+  if (flows.score != null) entries.push([flows.score, WEIGHTS.flows, flows.confidence]);
   if (fundamentals.score != null) {
     entries.push([fundamentals.score, WEIGHTS.fundamentals, fundamentals.confidence]);
   }
@@ -575,9 +731,12 @@ export function rateAsset(snap: AssetSnapshot): Rating {
 
   const missing: string[] = [];
   if (trend.score == null) missing.push("price trend");
-  if (analyst.score == null) missing.push("analyst forecasts");
+  // Analysts do not cover crypto and never will, so for a crypto asset the absent thing in that
+  // slot is the flow data — the same not-applicable-is-not-missing rule as fundamentals/network.
+  if (!isCrypto && analyst.score == null) missing.push("analyst forecasts");
   if (!isCrypto && fundamentals.score == null) missing.push("company fundamentals");
   if (isCrypto && network.score == null) missing.push("on-chain network activity");
+  if (isCrypto && flows.score == null) missing.push("institutional flows");
 
   let composite = 0;
   let confidence = 0;
@@ -592,7 +751,8 @@ export function rateAsset(snap: AssetSnapshot): Rating {
     // cap its confidence at 70% of the truth for owning no company accounts, and the confidence cap
     // in `starsFor` would then dock its stars for a gap that is not a gap. Because `network` and
     // `fundamentals` carry equal weight, this total is 1.0 for both kinds.
-    const applicable = WEIGHTS.trend + WEIGHTS.analyst +
+    const applicable = WEIGHTS.trend +
+      (isCrypto ? WEIGHTS.flows : WEIGHTS.analyst) +
       (isCrypto ? WEIGHTS.network : WEIGHTS.fundamentals);
     confidence = cWeighted * (wSum / applicable);
   }
@@ -615,6 +775,7 @@ export function rateAsset(snap: AssetSnapshot): Rating {
     analyst,
     fundamentals,
     network,
+    flows,
     risk,
     caveats,
     missing,
@@ -633,10 +794,14 @@ export function rankRatings(ratings: Rating[], by: SortKey = "stars"): Rating[] 
     switch (by) {
       case "trend":
         return r.trend.score ?? -1;
+      // ⚠️ SORT BY THE SLOT, NOT BY THE PILLAR. Each key covers whichever half of its pair applies
+      // to the asset — otherwise tapping "what do the professionals think?" ranks every crypto row
+      // last on the grounds that no analyst covers it, while the app is showing flow data that
+      // answers exactly that question in the very same column.
       case "analyst":
-        return r.analyst.score ?? -1;
+        return r.analyst.score ?? r.flows.score ?? -1;
       case "fundamentals":
-        return r.fundamentals.score ?? -1;
+        return r.fundamentals.score ?? r.network.score ?? -1;
       case "risk":
         // Lowest risk first, so invert the band index.
         return -BAND_ORDER.indexOf(r.risk.band);
