@@ -20,9 +20,15 @@ on:
 permissions:
   contents: write
 
+# ⚠️ `cancel-in-progress: true`, and it is NOT the usual reason (saving runner minutes). A stuck
+# run must never block the next one. On 2026-08-06 three runs sat unstarted in GitHub's queue for
+# 20+ minutes; with `false`, the newest simply waited behind them — so the nightly scheduled read
+# would have been blocked too, by a run that was never going to happen. For a daily snapshot the
+# NEWEST read is the one worth having and an older queued one is worth nothing, so superseding is
+# strictly correct here. The commit step is idempotent, so a cancelled run leaves nothing behind.
 concurrency:
   group: paper-round
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   round:
