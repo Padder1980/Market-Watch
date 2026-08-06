@@ -59,6 +59,48 @@ said: you won't invest money you can't afford to lose. If risk were averaged in 
 most to that decision would have been cancelled out by the number that excited you. A cap can't be
 cancelled out.
 
+It runs at **21:40 UTC** (after the US evening publication) with a **retry at 08:10** so a night when
+the site was slow heals itself by breakfast. **Settings → "Fetch the latest flows now"** runs it on
+demand: with no token that opens the workflow's page on GitHub for you to press Run; paste an
+optional fine-grained token and it becomes one tap. See *Running it on demand* below.
+
+## My holdings
+
+A second tab: write down what you bought and sold, and it shows what those units are worth at
+today's price, what you paid, and the difference.
+
+**It is a record, not advice.** Nothing on that page suggests buying, selling or holding — the ban on
+position sizing in this project is a ban on the app telling you what to *do* with money, not on
+writing down what you already own.
+
+- Purchases pool at **average cost**, and a sale removes the same fraction of the pool as the
+  fraction of units sold. Subtracting sale *proceeds* instead is the classic error: sell into a rise
+  and the coins you kept end up with a zero or negative cost, printing an infinite gain.
+- **Fees count** — added on a buy, deducted on a sale. Leaving them out flatters every position by
+  exactly what the platform charged.
+- Realised profit from closed positions is kept and shown separately from unrealised.
+- If an asset's price fails to load, its holding is left **out** of the total rather than counted as
+  worthless, and the total says it is incomplete.
+- ⚠️ **The gain shown is not a tax figure.** UK capital gains has its own matching rules (Section 104
+  pooling plus same-day and 30-day rules), and quietly approximating them would be worse than not
+  offering the number at all.
+
+### Running the flow snapshot on demand
+
+The app cannot start the robot by itself — asking GitHub to run a workflow needs a credential, and
+this page is public, so anything baked into it would be published to everyone. Two honest routes,
+and the button picks whichever applies:
+
+1. **No token** (default): it opens the workflow's page on GitHub, where you press *Run workflow*.
+2. **Your own token**: paste a **fine-grained** personal access token, limited to this repository,
+   with **Actions: read and write** and nothing else. Then the button asks GitHub directly. It is
+   stored in this browser like the other keys and sent only to `api.github.com`.
+
+⚠️ **Do not use a classic token here.** A classic token can push code to your repositories; a
+fine-grained one scoped as above can do nothing but run this workflow.
+
+---
+
 ### Things it deliberately does not do
 
 - **No price predictions, no "buy now", no trading signals.** Same reasoning as the chat reply that
@@ -69,8 +111,9 @@ cancelled out.
   machine-readable form is sell-side analyst recommendations and price targets, so that is what the
   Forecasts pillar reads. Counting optimistic adjectives in headlines would produce a number that
   looked like the same thing and meant nothing.
-- **No portfolio, no position sizing, no "how much should I put in".** That is the framework part of
-  the chat reply, and it is a conversation, not a number.
+- **No position sizing, and no "how much should I put in".** That is a conversation, not a number.
+  Note the line this draws: *My holdings* records what you already bought and prices it, which is a
+  statement of fact. Telling you what to do with that money is the part that stays out.
 
 ### Two calibrations that stop it flattering everything
 
@@ -104,8 +147,8 @@ To put it on your phone: serve the folder over HTTP and add it to the Home Scree
 ```bash
 node build.ts                  # rebuild first — every check below reads the BUILT page
 npx tsc --noEmit               # typecheck
-node --test "test/*.test.ts"   # 54 engine tests
-node test/app-smoke.mjs        # 25 browser checks against the BUILT page
+node --test "test/*.test.ts"   # 67 engine tests
+node test/app-smoke.mjs        # 33 browser checks against the BUILT page
 ```
 
 Or `npm run check`, which runs all four in that order.

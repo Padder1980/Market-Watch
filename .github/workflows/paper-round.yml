@@ -9,6 +9,11 @@ on:
   schedule:
     # 21:40 UTC — Farside publishes in the US evening, so this lands after the day's rows are up.
     - cron: "40 21 * * 1-6"
+    # 08:10 UTC — a retry, not a second reading. The evening run is the one that matters; this one
+    # exists so a night when the site was down or slow heals itself by breakfast instead of leaving
+    # the pillar stale until the following evening. It is a no-op when the evening run succeeded,
+    # because the commit step only commits an actual change.
+    - cron: "10 8 * * 2-6"
   workflow_dispatch:
 
 # The job commits to the repo, so it needs write access. Nothing else.

@@ -21,6 +21,9 @@ export {
 } from "./src/score.ts";
 export type { SortKey } from "./src/score.ts";
 
+export { assetsHeld, portfolioTotals, positionFor } from "./src/holdings.ts";
+export type { Lot, PortfolioTotals, Position } from "./src/holdings.ts";
+
 export {
   fetchBitcoinNetwork,
   fetchCrypto,

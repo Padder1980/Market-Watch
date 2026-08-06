@@ -201,6 +201,42 @@ input[type="text"] { font-family: var(--mono); }
 .spin { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; vertical-align: -2px; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .foot { text-align: center; font-size: 11px; color: var(--ink-faint); padding: 24px 0 0; }
+
+/* ---- tabs ---- */
+.tabs { display: flex; gap: 4px; background: var(--surface-2); border: 1px solid var(--line);
+  border-radius: 10px; padding: 3px; margin: 0 0 14px; }
+.tab { flex: 1; appearance: none; background: transparent; border: 0; border-radius: 8px;
+  padding: 9px 10px; font: inherit; font-size: 14px; color: var(--ink-soft); cursor: pointer; }
+.tab[aria-selected="true"] { background: var(--surface); color: var(--ink); font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+
+/* ---- holdings ---- */
+.hsum { background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+  padding: 16px; margin-bottom: 14px; }
+.hsum .big { font-size: 30px; font-weight: 700; letter-spacing: -.5px; }
+.hsum .lbl2 { font-size: 12px; color: var(--ink-faint); text-transform: uppercase;
+  letter-spacing: .06em; margin-bottom: 2px; }
+.hgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
+.hrow { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; padding: 12px 0;
+  border-top: 1px solid var(--line); }
+.hrow .nm { font-weight: 600; }
+.hrow .sub2 { font-size: 12px; color: var(--ink-faint); grid-column: 1; }
+.hrow .val { text-align: right; font-variant-numeric: tabular-nums; }
+.hrow .chg { text-align: right; font-size: 13px; font-variant-numeric: tabular-nums; }
+.txrow { display: flex; align-items: center; gap: 10px; padding: 9px 0;
+  border-top: 1px solid var(--line); font-size: 14px; }
+.txrow .grow { flex: 1; min-width: 0; }
+.txrow .side { font-size: 11px; text-transform: uppercase; letter-spacing: .06em;
+  border: 1px solid var(--line); border-radius: 999px; padding: 2px 8px; color: var(--ink-faint); }
+.txrow .side.buy { color: var(--up); border-color: var(--up); }
+.txrow .side.sell { color: var(--down); border-color: var(--down); }
+.txrow button { appearance: none; background: transparent; border: 0; color: var(--ink-faint);
+  font: inherit; cursor: pointer; padding: 4px 6px; }
+.warn { background: var(--surface-2); border-left: 3px solid var(--down); border-radius: 6px;
+  padding: 10px 12px; font-size: 13px; margin: 10px 0; }
+.frm { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 12px 0; }
+.frm label { font-size: 12px; color: var(--ink-faint); display: block; margin-bottom: 4px; }
+.frm .wide { grid-column: 1 / -1; }
 </style>
 </head>
 <body>
@@ -222,6 +258,12 @@ input[type="text"] { font-family: var(--mono); }
     tops, so the risk band is a hard cap, never an average.
   </div>
 
+  <div class="tabs" id="tabs" role="tablist">
+    <button class="tab" id="tabRatings" role="tab" aria-selected="true" data-view="ratings">Ratings</button>
+    <button class="tab" id="tabHoldings" role="tab" aria-selected="false" data-view="holdings">My holdings</button>
+  </div>
+
+  <div id="viewRatings">
   <div class="chips" id="chips">
     <button class="chip" data-sort="stars" aria-pressed="true">Overall</button>
     <button class="chip" data-sort="trend" aria-pressed="false">Trending up</button>
@@ -231,7 +273,58 @@ input[type="text"] { font-family: var(--mono); }
   </div>
 
   <div id="list"></div>
-  <div class="foot">Build 2026-08-06 15:59 · data from CoinGecko, Blockchain.com, Twelve Data, Finnhub, and Farside Investors via a daily snapshot · nothing leaves this device except calls to those APIs</div>
+  </div>
+
+  <div id="viewHoldings" hidden>
+    <div class="notice">
+      <strong>This is a record, not advice.</strong>
+      It multiplies what you typed in by today's price. It will never tell you to buy, sell or hold,
+      and the gain shown is <em>not</em> a tax figure — UK capital gains has its own matching rules.
+    </div>
+    <div id="holdings"></div>
+    <button class="btn" id="addTxBtn">Add a purchase or sale</button>
+  </div>
+
+  <div class="foot">Build 2026-08-06 19:08 · data from CoinGecko, Blockchain.com, Twelve Data, Finnhub, and Farside Investors via a daily snapshot · nothing leaves this device except calls to those APIs</div>
+</div>
+
+<div class="sheet-ov" id="txOv">
+  <div class="sheet">
+    <h2 id="txTitle">Add a transaction</h2>
+    <p class="hint">Stored only in this browser, like everything else here.</p>
+    <div class="frm">
+      <div class="wide">
+        <label for="txAsset">Asset</label>
+        <select id="txAsset"></select>
+      </div>
+      <div>
+        <label for="txSide">Bought or sold</label>
+        <select id="txSide">
+          <option value="buy">Bought</option>
+          <option value="sell">Sold</option>
+        </select>
+      </div>
+      <div>
+        <label for="txDate">Date</label>
+        <input type="date" id="txDate">
+      </div>
+      <div>
+        <label for="txQty">Amount (units)</label>
+        <input type="text" inputmode="decimal" id="txQty" placeholder="0.05" autocomplete="off">
+      </div>
+      <div>
+        <label for="txPrice">Price each</label>
+        <input type="text" inputmode="decimal" id="txPrice" placeholder="38000" autocomplete="off">
+      </div>
+      <div class="wide">
+        <label for="txFee">Fee (optional)</label>
+        <input type="text" inputmode="decimal" id="txFee" placeholder="0" autocomplete="off">
+      </div>
+      <div class="wide" id="txSpend"></div>
+    </div>
+    <button class="btn" id="txSave">Save</button>
+    <button class="btn ghost" id="txCancel">Cancel</button>
+  </div>
 </div>
 
 <div class="sheet-ov" id="setOv">
@@ -257,6 +350,17 @@ input[type="text"] { font-family: var(--mono); }
       <span class="note">Free at finnhub.io — adds analyst forecasts and company financials. Optional.</span>
     </label>
     <input type="text" id="fhKey" placeholder="paste key" autocomplete="off" spellcheck="false">
+
+    <label>Flow snapshot</label>
+    <span class="note">ETF flows are collected once a day by a robot on GitHub. Tap to run it now.
+      Without a token this opens GitHub, where you press &ldquo;Run workflow&rdquo; yourself.</span>
+    <button class="btn ghost" id="runRound" style="margin-bottom:6px">Fetch the latest flows now</button>
+    <span class="note" id="roundMsg"></span>
+    <span class="note">Optional GitHub token for a one-tap run. Use a
+      <b>fine-grained</b> token limited to the Market-Watch repository with
+      <b>Actions: read and write</b> and nothing else &mdash; that is all it can then do. A classic
+      token would be able to change your code, so do not use one.</span>
+    <input type="text" id="ghKey" placeholder="github_pat_… (optional)" autocomplete="off" spellcheck="false">
 
     <label>Watchlist</label>
     <div class="wl" id="wl"></div>
@@ -305,11 +409,14 @@ var MK = (() => {
     STAR_THRESHOLDS: () => STAR_THRESHOLDS,
     TARGET_NEUTRAL: () => TARGET_NEUTRAL,
     WEIGHTS: () => WEIGHTS,
+    assetsHeld: () => assetsHeld,
     fetchBitcoinNetwork: () => fetchBitcoinNetwork,
     fetchCrypto: () => fetchCrypto,
     fetchEquityHistory: () => fetchEquityHistory,
     fetchFlows: () => fetchFlows,
     loadWatchlist: () => loadWatchlist,
+    portfolioTotals: () => portfolioTotals,
+    positionFor: () => positionFor,
     profileRisk: () => profileRisk,
     rankRatings: () => rankRatings,
     rateAsset: () => rateAsset,
@@ -909,6 +1016,102 @@ var MK = (() => {
     });
   }
 
+  // src/holdings.ts
+  function round(x, dp = 10) {
+    const f = 10 ** dp;
+    return Math.round(x * f) / f;
+  }
+  function positionFor(lots, assetId, currentPrice) {
+    const mine = lots.filter((l) => l.assetId === assetId).slice().sort((a, b) => a.dateIso < b.dateIso ? -1 : a.dateIso > b.dateIso ? 1 : 0);
+    let quantity = 0;
+    let costBasis = 0;
+    let realised = 0;
+    let invested = 0;
+    let withdrawn = 0;
+    const warnings = [];
+    for (const l of mine) {
+      const qty = Number(l.quantity);
+      const price2 = Number(l.unitPrice);
+      const fee = Number(l.fee ?? 0) || 0;
+      if (!Number.isFinite(qty) || qty <= 0 || !Number.isFinite(price2) || price2 < 0) {
+        warnings.push(`A ${l.side} dated ${l.dateIso} has an unreadable amount or price and was skipped.`);
+        continue;
+      }
+      if (l.side === "buy") {
+        quantity += qty;
+        costBasis += qty * price2 + fee;
+        invested += qty * price2 + fee;
+        continue;
+      }
+      let sellQty = qty;
+      if (sellQty > quantity + 1e-12) {
+        warnings.push(
+          `A sell dated ${l.dateIso} is for more than was held at the time. Counted as selling the ${round(quantity, 8)} available \u2014 check the entry.`
+        );
+        sellQty = quantity;
+      }
+      if (sellQty <= 0) continue;
+      const fraction = quantity > 0 ? sellQty / quantity : 0;
+      const costOut = costBasis * fraction;
+      const proceeds = sellQty * price2 - fee;
+      realised += proceeds - costOut;
+      withdrawn += proceeds;
+      quantity -= sellQty;
+      costBasis -= costOut;
+    }
+    quantity = round(quantity, 10);
+    costBasis = round(costBasis, 6);
+    if (Math.abs(quantity) < 1e-9) {
+      quantity = 0;
+      costBasis = 0;
+    }
+    const price = currentPrice != null && Number.isFinite(currentPrice) && currentPrice > 0 ? currentPrice : null;
+    const value = price != null ? quantity * price : null;
+    const unrealised = value != null ? value - costBasis : null;
+    const unrealisedPct = unrealised != null && costBasis > 0 ? unrealised / costBasis : null;
+    return {
+      assetId,
+      quantity,
+      costBasis,
+      averageCost: quantity > 0 ? costBasis / quantity : null,
+      value,
+      unrealised,
+      unrealisedPct,
+      realised: round(realised, 6),
+      invested: round(invested, 6),
+      withdrawn: round(withdrawn, 6),
+      warnings
+    };
+  }
+  function portfolioTotals(positions) {
+    let costBasis = 0;
+    let value = 0;
+    let realised = 0;
+    let partial = false;
+    for (const p of positions) {
+      realised += p.realised;
+      if (p.quantity <= 0) continue;
+      if (p.value == null) {
+        partial = true;
+        continue;
+      }
+      costBasis += p.costBasis;
+      value += p.value;
+    }
+    const unrealised = value - costBasis;
+    return {
+      costBasis: round(costBasis, 6),
+      value: round(value, 6),
+      unrealised: round(unrealised, 6),
+      unrealisedPct: costBasis > 0 ? unrealised / costBasis : null,
+      realised: round(realised, 6),
+      partial
+    };
+  }
+  function assetsHeld(lots) {
+    return [...new Set(lots.map((l) => l.assetId))];
+  }
+
   // src/providers.ts
   var ProviderError = class extends Error {
     constructor(message, provider) {
@@ -1203,6 +1406,12 @@ var MK = (() => {
   var K_SORT = "mkt_sort_v1";
   var K_CACHE = "mkt_cache_v1";
   var K_THEME = "mkt_theme_v1";
+  var K_LOTS = "mkt_holdings_v1";
+
+  // The repo the paper round lives in. Used only to open its Actions page, or to ask
+  // GitHub to run the workflow when the owner has supplied their own token.
+  var GH_REPO = "Padder1980/Market-Watch";
+  var GH_WORKFLOW = "paper-round.yml";
 
   var DEFAULT_WATCH = [
     { kind: "crypto", id: "bitcoin", label: "Bitcoin" },
@@ -1226,7 +1435,10 @@ var MK = (() => {
     sort: read(K_SORT, "stars"),
     ratings: [],
     failures: [],
-    loading: false
+    loading: false,
+    view: "ratings",
+    lots: read(K_LOTS, []),
+    editing: null
   };
 
   function $(id) { return document.getElementById(id); }
@@ -1371,6 +1583,11 @@ var MK = (() => {
   }
 
   function render() {
+    // ⚠️ The holdings page is priced from the SAME snapshots as the ratings, so it has to re-render
+    // whenever they change. Rendering it only when the tab is tapped left yesterday's cached value
+    // on screen after a refresh had already fetched today's price.
+    if (state.view === "holdings" && typeof renderHoldings === "function") renderHoldings();
+
     var list = $("list");
 
     if (state.loading) {
@@ -1404,6 +1621,267 @@ var MK = (() => {
     });
 
     list.innerHTML = html;
+  }
+
+  // -------------------------------------------------------------------------------------------
+  // Holdings — a record of what was bought, priced at today's number
+  // -------------------------------------------------------------------------------------------
+
+  /** Today's price for an asset id, from the loaded snapshots. Null when it did not load. */
+  function priceFor(assetId) {
+    for (var i = 0; i < state.ratings.length; i++) {
+      if (state.ratings[i].snap.id === assetId) return state.ratings[i].snap.price;
+    }
+    return null;
+  }
+
+  function labelFor(assetId) {
+    for (var i = 0; i < state.watch.length; i++) {
+      if (state.watch[i].id === assetId) return state.watch[i].label || state.watch[i].id;
+    }
+    return assetId;
+  }
+
+  function signClass(v) { return v == null ? "flat" : v > 0 ? "up" : v < 0 ? "down" : "flat"; }
+
+  function signedMoney(v, cur) {
+    if (v == null || !isFinite(v)) return "—";
+    return (v > 0 ? "+" : v < 0 ? "-" : "") + money(Math.abs(v), cur);
+  }
+
+  /** Units render with enough places to be recognisable: 0.05 BTC must not print as "0". */
+  function qtyText(q) {
+    if (q == null || !isFinite(q)) return "—";
+    if (q === 0) return "0";
+    var abs = Math.abs(q);
+    var dp = abs >= 1000 ? 2 : abs >= 1 ? 4 : 8;
+    return q.toFixed(dp).replace(/\.?0+$/, "");
+  }
+
+  function renderHoldings() {
+    var host = $("holdings");
+    var cur = state.currency;
+
+    if (!state.lots.length) {
+      host.innerHTML = '<div class="empty">Nothing recorded yet. Add what you bought and this page ' +
+        "will show what it is worth now.</div>";
+      return;
+    }
+
+    var ids = MK.assetsHeld(state.lots);
+    var positions = ids.map(function (id) {
+      return MK.positionFor(state.lots, id, priceFor(id));
+    });
+    var totals = MK.portfolioTotals(positions);
+
+    var html = '<div class="hsum">';
+    html += '<div class="lbl2">Worth now</div>';
+    html += '<div class="big">' + esc(money(totals.value, cur)) + "</div>";
+    var pctPart = totals.unrealisedPct == null ? "" : " (" + pctText(totals.unrealisedPct) + ")";
+    html += '<div class="' + signClass(totals.unrealised) + '">' +
+      esc(signedMoney(totals.unrealised, cur) + pctPart) + " against what you paid</div>";
+    html += '<div class="hgrid">';
+    html += '<div><div class="lbl2">You paid</div><div>' + esc(money(totals.costBasis, cur)) + "</div></div>";
+    if (totals.realised !== 0) {
+      html += '<div><div class="lbl2">Already banked</div><div class="' + signClass(totals.realised) +
+        '">' + esc(signedMoney(totals.realised, cur)) + "</div></div>";
+    }
+    html += "</div>";
+    // ⚠️ A total that could not price everything must SAY SO on the total itself. Counting an
+    // unpriced holding as zero would report a portfolio that had just lost it outright.
+    if (totals.partial) {
+      html += '<div class="warn">One of your holdings has no current price loaded, so it is left ' +
+        "out of these totals rather than counted as worthless. Tap the refresh arrow.</div>";
+    }
+    html += "</div>";
+
+    positions.forEach(function (p) {
+      if (p.quantity <= 0 && p.realised === 0) return;
+      html += '<div class="hrow">';
+      html += '<div class="nm">' + esc(labelFor(p.assetId)) + "</div>";
+      html += '<div class="val">' + esc(p.value == null ? "—" : money(p.value, cur)) + "</div>";
+      var sub = p.quantity > 0
+        ? qtyText(p.quantity) + " @ " + money(p.averageCost, cur) + " average"
+        : "closed";
+      html += '<div class="sub2">' + esc(sub) + "</div>";
+      if (p.quantity > 0) {
+        var pc = p.unrealisedPct == null ? "" : " " + pctText(p.unrealisedPct);
+        html += '<div class="chg ' + signClass(p.unrealised) + '">' +
+          esc(signedMoney(p.unrealised, cur) + pc) + "</div>";
+      } else {
+        html += '<div class="chg ' + signClass(p.realised) + '">' +
+          esc(signedMoney(p.realised, cur) + " banked") + "</div>";
+      }
+      html += "</div>";
+      p.warnings.forEach(function (w) {
+        html += '<div class="warn">' + esc(w) + "</div>";
+      });
+    });
+
+    html += '<details class="more"><summary>Every transaction</summary><div class="working">';
+    var sorted = state.lots.slice().sort(function (a, b) { return a.dateIso < b.dateIso ? 1 : -1; });
+    sorted.forEach(function (l) {
+      html += '<div class="txrow">';
+      html += '<span class="side ' + esc(l.side) + '">' + (l.side === "buy" ? "Bought" : "Sold") + "</span>";
+      html += '<span class="grow">' + esc(qtyText(l.quantity) + " " + labelFor(l.assetId)) +
+        " @ " + esc(money(l.unitPrice, cur)) + '<br><span class="sub2">' + esc(l.dateIso) +
+        (l.fee ? " · fee " + esc(money(l.fee, cur)) : "") + "</span></span>";
+      html += '<button data-edit="' + esc(l.id) + '" aria-label="Edit">Edit</button>';
+      html += '<button data-del="' + esc(l.id) + '" aria-label="Remove">✕</button>';
+      html += "</div>";
+    });
+    html += "</div></details>";
+
+    host.innerHTML = html;
+
+    host.querySelectorAll("[data-del]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        var id = b.getAttribute("data-del");
+        state.lots = state.lots.filter(function (l) { return l.id !== id; });
+        write(K_LOTS, state.lots);
+        renderHoldings();
+      });
+    });
+    host.querySelectorAll("[data-edit]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        openTxSheet(b.getAttribute("data-edit"));
+      });
+    });
+  }
+
+  // ---- the add / edit sheet -------------------------------------------------------------------
+
+  function txAssetOptions(selected) {
+    var out = "";
+    state.watch.forEach(function (w) {
+      out += '<option value="' + esc(w.id) + '"' + (w.id === selected ? " selected" : "") + ">" +
+        esc(w.label || w.id) + "</option>";
+    });
+    return out;
+  }
+
+  function num(v) {
+    var n = Number(String(v == null ? "" : v).replace(/[,\s£$€]/g, ""));
+    return isFinite(n) ? n : NaN;
+  }
+
+  function updateSpend() {
+    var q = num($("txQty").value);
+    var p = num($("txPrice").value);
+    var f = num($("txFee").value) || 0;
+    var el = $("txSpend");
+    if (!isFinite(q) || !isFinite(p) || q <= 0) { el.innerHTML = ""; return; }
+    var side = $("txSide").value;
+    var total = q * p + (side === "buy" ? f : -f);
+    el.innerHTML = '<span class="note">' +
+      esc((side === "buy" ? "Total spent: " : "Total received: ") + money(total, state.currency)) +
+      "</span>";
+  }
+
+  function openTxSheet(editId) {
+    var lot = null;
+    if (editId) {
+      for (var i = 0; i < state.lots.length; i++) {
+        if (state.lots[i].id === editId) { lot = state.lots[i]; break; }
+      }
+    }
+    state.editing = lot ? lot.id : null;
+    $("txTitle").textContent = lot ? "Edit transaction" : "Add a transaction";
+    $("txAsset").innerHTML = txAssetOptions(lot ? lot.assetId : (state.watch[0] && state.watch[0].id));
+    $("txSide").value = lot ? lot.side : "buy";
+    $("txDate").value = lot ? lot.dateIso : new Date().toISOString().slice(0, 10);
+    $("txQty").value = lot ? String(lot.quantity) : "";
+    $("txPrice").value = lot ? String(lot.unitPrice) : "";
+    $("txFee").value = lot && lot.fee ? String(lot.fee) : "";
+    updateSpend();
+    $("txOv").classList.add("on");
+  }
+
+  function saveTx() {
+    var q = num($("txQty").value);
+    var p = num($("txPrice").value);
+    var f = num($("txFee").value);
+    var date = $("txDate").value;
+    if (!isFinite(q) || q <= 0) { $("txQty").focus(); return; }
+    if (!isFinite(p) || p < 0) { $("txPrice").focus(); return; }
+    if (!date) { $("txDate").focus(); return; }
+
+    var lot = {
+      id: state.editing || ("tx" + Date.now() + Math.random().toString(36).slice(2, 7)),
+      assetId: $("txAsset").value,
+      side: $("txSide").value,
+      dateIso: date,
+      quantity: q,
+      unitPrice: p,
+      fee: isFinite(f) ? f : 0
+    };
+    if (state.editing) {
+      state.lots = state.lots.map(function (l) { return l.id === state.editing ? lot : l; });
+    } else {
+      state.lots = state.lots.concat([lot]);
+    }
+    write(K_LOTS, state.lots);
+    state.editing = null;
+    $("txOv").classList.remove("on");
+    renderHoldings();
+  }
+
+  // -------------------------------------------------------------------------------------------
+  // Running the paper round on demand
+  // -------------------------------------------------------------------------------------------
+
+  /**
+   * ⚠️ THE APP CANNOT RUN THE ROBOT BY ITSELF, AND THAT IS NOT A LIMITATION TO ENGINEER AROUND.
+   * Asking GitHub to start a workflow needs a credential, and this page is public — anything baked
+   * into it is published to everyone. So there are two honest routes and the button picks whichever
+   * applies: with no token it OPENS the workflow's page, where the owner presses Run themselves;
+   * with a token they chose to store, it asks GitHub directly.
+   *
+   * The token is the owner's own, lives only in this browser, and goes only to api.github.com —
+   * the same arrangement as the Twelve Data and Finnhub keys. The settings copy insists on a
+   * fine-grained, repo-scoped, Actions-only token, because that one can do nothing but this.
+   */
+  var GH_RUN_URL = "https://github.com/" + GH_REPO + "/actions/workflows/" + GH_WORKFLOW;
+
+  async function runPaperRound() {
+    var msg = $("roundMsg");
+    var token = (state.keys.github || "").trim();
+    if (!token) {
+      msg.textContent = "Opening GitHub — press “Run workflow” there, then come back and refresh in a minute or two.";
+      window.open(GH_RUN_URL, "_blank", "noopener");
+      return;
+    }
+    $("runRound").disabled = true;
+    msg.textContent = "Asking GitHub to run it…";
+    try {
+      var res = await fetch(
+        "https://api.github.com/repos/" + GH_REPO + "/actions/workflows/" + GH_WORKFLOW + "/dispatches",
+        {
+          method: "POST",
+          headers: {
+            "accept": "application/vnd.github+json",
+            "authorization": "Bearer " + token,
+            "content-type": "application/json"
+          },
+          body: JSON.stringify({ ref: "main" })
+        }
+      );
+      // ⚠️ 204 No Content is the SUCCESS here, and it carries no body. Checking for JSON, or for a
+      // 200, would report a working trigger as a failure every single time.
+      if (res.status === 204) {
+        msg.textContent = "Started. It takes a minute or so; then tap the refresh arrow.";
+      } else if (res.status === 401 || res.status === 403) {
+        msg.textContent = "GitHub refused the token (" + res.status + "). It needs Actions: read and write on this repository.";
+      } else if (res.status === 404) {
+        msg.textContent = "GitHub could not find the workflow, which usually means the token cannot see this repository.";
+      } else {
+        msg.textContent = "GitHub answered " + res.status + ".";
+      }
+    } catch (e) {
+      msg.textContent = "Could not reach GitHub. Open it manually instead: " + GH_RUN_URL;
+    } finally {
+      $("runRound").disabled = false;
+    }
   }
 
   // -------------------------------------------------------------------------------------------
@@ -1493,12 +1971,39 @@ var MK = (() => {
     $("curSel").value = state.currency;
     $("tdKey").value = state.keys.twelveData || "";
     $("fhKey").value = state.keys.finnhub || "";
+    $("ghKey").value = state.keys.github || "";
+    $("roundMsg").textContent = "";
     renderWatchlist();
     $("setOv").classList.add("on");
   }
   function closeSettings() { $("setOv").classList.remove("on"); }
 
   $("setBtn").addEventListener("click", openSettings);
+  $("runRound").addEventListener("click", runPaperRound);
+
+  // ---- tabs -----------------------------------------------------------------------------------
+  function setView(v) {
+    state.view = v;
+    $("viewRatings").hidden = v !== "ratings";
+    $("viewHoldings").hidden = v !== "holdings";
+    $("tabRatings").setAttribute("aria-selected", String(v === "ratings"));
+    $("tabHoldings").setAttribute("aria-selected", String(v === "holdings"));
+    if (v === "holdings") renderHoldings();
+  }
+  $("tabRatings").addEventListener("click", function () { setView("ratings"); });
+  $("tabHoldings").addEventListener("click", function () { setView("holdings"); });
+
+  // ---- transaction sheet ----------------------------------------------------------------------
+  $("addTxBtn").addEventListener("click", function () { openTxSheet(null); });
+  $("txSave").addEventListener("click", saveTx);
+  $("txCancel").addEventListener("click", function () {
+    state.editing = null;
+    $("txOv").classList.remove("on");
+  });
+  ["txQty", "txPrice", "txFee"].forEach(function (id) {
+    $(id).addEventListener("input", updateSpend);
+  });
+  $("txSide").addEventListener("change", updateSpend);
   $("closeBtn").addEventListener("click", closeSettings);
   $("setOv").addEventListener("click", function (e) {
     if (e.target === $("setOv")) closeSettings();
@@ -1524,6 +2029,11 @@ var MK = (() => {
     state.currency = $("curSel").value;
     var td = $("tdKey").value.trim();
     var fh = $("fhKey").value.trim();
+    var gh = $("ghKey").value.trim();
+    // ⚠️ Stored under `keys` with the market-data keys, so the existing "keys never leave this
+    // browser" promise and the settings copy cover it too. It is sent to api.github.com and nowhere
+    // else, exactly as the others are sent only to their own API.
+    if (gh) { state.keys.github = gh; } else { delete state.keys.github; }
     state.keys = {};
     if (td) state.keys.twelveData = td;
     if (fh) state.keys.finnhub = fh;

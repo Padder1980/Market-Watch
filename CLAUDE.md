@@ -37,6 +37,7 @@ src/             pure TypeScript engine, no runtime dependencies, fully unit-tes
   score.ts         the pillars, the composite, the caps
   providers.ts     API adapters (browser fetch)
   flows-parse.ts   pure parsers for the paper round's HTML — no fetch, so they are unit-testable
+  holdings.ts      the transaction book: average-cost pooling, value, gain
   types.ts         shared types
 tools/           NOT shipped to the browser
   paper-round.ts   the daily robot: reads free pages server-side, writes data/flows.json
@@ -61,8 +62,8 @@ moving the markup into a template literal in `build.ts`.**
 npm ci                         # once
 node build.ts                  # rebuild index.html — run after ANY edit to src/, entry.ts or shell.html
 npx tsc --noEmit               # typecheck (must be clean)
-node --test "test/*.test.ts"   # 54 engine tests
-node test/app-smoke.mjs        # 25 browser checks against the BUILT page
+node --test "test/*.test.ts"   # 67 engine tests
+node test/app-smoke.mjs        # 33 browser checks against the BUILT page
 node tools/paper-round.ts --dry  # the daily robot, without writing anything
 npm run check                  # all four, in that order
 ```
@@ -355,9 +356,65 @@ cannot read the FT and form a view. ⚠️ Do not try to make the app emit that 
 fabricate the inputs. The one piece that DOES belong in the app is **citing the original source
 beside every number**, which the working-shown design already does.
 
+## My holdings — a record, and why it does not break the no-advice rule
+
+`src/holdings.ts` + the second tab. The owner asked to track what he bought and how its value moves.
+
+⚠️ **THE README RULES OUT "no portfolio, no position sizing" AND THIS DOES NOT BREACH IT.** That ban
+is on the app telling him what to DO with money. Writing down what he already bought and multiplying
+it by today's price is a statement of fact. Nothing on that page may cross back: no "time to take
+profits", no targets, no rebalancing, no alerts framed as prompts to act.
+
+⚠️ **A SELL REDUCES THE COST BASIS PROPORTIONALLY, NEVER BY ITS PROCEEDS.** Subtract what was
+received and the surviving units carry a cost unrelated to what was paid — measured in the test: 2
+BTC at £30k, half sold at £60k, proceeds-subtraction leaves the remaining coin with a cost basis of
+**£0**, printing as an infinite gain on a coin that cost £30,000. Take out the same fraction of the
+pool as the fraction of units sold.
+
+⚠️ **FEES IN ON THE WAY IN, OFF ON THE WAY OUT.** Omitting them flatters every position by exactly
+what the platform charged — the one error a holdings page has no excuse for.
+
+⚠️ **A SELL LARGER THAN THE HOLDING IS A TYPO: sell what exists and SAY SO.** Letting the quantity go
+negative invents a short position the owner never took and poisons every total below it while looking
+like an ordinary row.
+
+⚠️ **AN UNPRICED HOLDING MAKES THE TOTAL PARTIAL — it is never counted as zero.** The same
+absent-is-not-bad rule as the scoring engine, in the one place where breaking it looks like a
+catastrophe: a failed price fetch would report a portfolio that had just lost that holding outright.
+
+⚠️ **NOT A TAX FIGURE, AND THE UI SAYS SO.** UK CGT uses Section 104 pooling plus same-day and 30-day
+matching. Average cost is the honest answer to "what did mine cost me"; quietly approximating HMRC's
+rules for someone filing a return would be worse than not offering the number.
+
+Other guards: transactions pool in DATE order not entry order (typing yesterday's trade in after
+today's must not change the answer); a zero cost basis yields a null percentage rather than
+`Infinity%`; fully-sold positions clear their floating-point crumbs so 1e-17 units do not print as a
+holding. Stored in `mkt_holdings_v1`.
+
+## Running the paper round on demand
+
+⚠️ **THE APP STRUCTURALLY CANNOT START THE ROBOT ON ITS OWN, and that is not a limitation to
+engineer around.** Asking GitHub to run a workflow needs a credential; this page is public, so
+anything baked in is published to everyone. Two honest routes, and `runPaperRound` picks whichever
+applies:
+
+1. **No token** — opens the workflow's page on GitHub, where the owner presses Run. Zero secrets.
+2. **His own fine-grained token**, stored in `keys.github` beside the market-data keys and sent only
+   to `api.github.com`. The settings copy insists on **fine-grained, this repo only, Actions: read
+   and write**. ⚠️ **A classic token must never be used here** — it could push code; a fine-grained
+   one scoped that way can do nothing but run this workflow. Do not relax that copy.
+
+⚠️ **204 No Content IS THE SUCCESS RESPONSE** and carries no body. Checking for 200, or for JSON,
+reports a working trigger as a failure every single time.
+
+The workflow also has a **08:10 UTC retry** alongside the 21:40 run. It is a retry, not a second
+reading: the commit step only commits an actual change, so a successful evening makes it a no-op,
+and a night when the site was slow heals by breakfast instead of leaving the pillar stale all day.
+
 ## Storage keys
 
-`mkt_watchlist_v*`, `mkt_keys_v*`, `mkt_currency_v*`, `mkt_sort_v*`, `mkt_cache_v*`, `mkt_theme_v*`.
+`mkt_watchlist_v*`, `mkt_keys_v*`, `mkt_currency_v*`, `mkt_sort_v*`, `mkt_cache_v*`, `mkt_theme_v*`,
+`mkt_holdings_v*` (the transaction book — losing it loses what he typed in).
 Renaming any of them orphans the user's watchlist and settings.
 
 ## Known limits — stated in the README, keep them stated
@@ -379,7 +436,7 @@ be phrased as a recommendation to buy or sell.
 ## Current status
 
 Standing on its own since the move from Inte-Run (2026-08-06). Build clean, `tsc --noEmit` clean,
-**54 engine tests** passing, **25 browser smoke checks** passing.
+**67 engine tests** passing, **33 browser smoke checks** passing.
 
 Since the move: a **Network pillar** (Bitcoin on-chain activity and miner behaviour, from
 Blockchain.com) and a **Flows pillar** fed by the **paper round** (US spot ETF flows and

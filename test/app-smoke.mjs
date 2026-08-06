@@ -230,6 +230,55 @@ check(
   working.slice(0, 200),
 );
 
+// ---------------------------------------------------------------------------------------------
+// The holdings page
+// ---------------------------------------------------------------------------------------------
+
+await page.locator("#tabHoldings").click();
+check(
+  "the holdings tab swaps the view",
+  await page.locator("#viewHoldings").isVisible() && !(await page.locator("#viewRatings").isVisible()),
+);
+check(
+  "an empty book invites the first entry rather than showing a broken total",
+  /Nothing recorded yet/i.test(await page.locator("#holdings").innerText()),
+);
+
+// Enter a real purchase through the actual form — the point of a browser test is to prove the
+// wiring, and a localStorage seed would bypass every control being checked here.
+await page.locator("#addTxBtn").click();
+await page.locator("#txQty").fill("0.5");
+await page.locator("#txPrice").fill("30000");
+check(
+  "the sheet totals the spend as you type",
+  /Total spent/i.test(await page.locator("#txSpend").innerText()),
+  await page.locator("#txSpend").innerText(),
+);
+await page.locator("#txSave").click();
+
+const held = await page.locator("#holdings").innerText();
+// The stubbed price series ends around 34,000, so half a coin bought at 30,000 must show a gain.
+check("the holding is priced at today's number", /Worth now/i.test(held), held.slice(0, 120));
+check(
+  "a gain is shown against what was paid",
+  /against what you paid/i.test(held) && /\+/.test(held),
+  held.slice(0, 260),
+);
+const gainClass = await page.locator("#holdings .hsum div.up, #holdings .hsum div.down").count();
+check("the gain is coloured, not just signed", gainClass > 0);
+
+// ⚠️ A holding must survive a reload. This is the whole promise of the page — it is a record, and a
+// record that evaporates when the tab is closed is worse than no record at all.
+await page.reload();
+await page.waitForSelector(".card", { timeout: 15000 });
+await page.locator("#tabHoldings").click();
+check(
+  "holdings persist across a reload",
+  /Worth now/i.test(await page.locator("#holdings").innerText()),
+);
+
+await page.locator("#tabRatings").click();
+
 // Sorting must re-render without throwing.
 await page.locator('.chip[data-sort="trend"]').click();
 check("sorting by trend keeps the list rendered", (await page.locator(".card").count()) === 2);
