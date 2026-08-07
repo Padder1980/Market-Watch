@@ -143,7 +143,11 @@ await page.waitForSelector(".card", { timeout: 15000 });
 
 check("the engine bundle inlined and exposed MK", await page.evaluate(() => typeof window.MK === "object" && typeof window.MK.rateAsset === "function"));
 
-const cards = await page.locator(".card").count();
+// ⚠️ SCOPED TO #list, NOT A BARE ".card". Education's own guide cards are rendered at boot (they're
+// static, local content — no reason to lazy-load them) and reuse the `.card` class for its styling,
+// so they sit in the DOM, just hidden behind `#viewEducation`, the same trap Discover's cards already
+// taught this file once (see the later sort-check comment). An unscoped count here read 12, not 2.
+const cards = await page.locator("#list .card").count();
 check("both default watchlist rows rendered", cards === 2, `got ${cards}`);
 
 const stars = await page.locator(".card").first().locator(".stars").count();
@@ -314,6 +318,92 @@ check(
 );
 
 await page.locator("#tabRatings").click();
+
+// ---------------------------------------------------------------------------------------------
+// Education
+// ---------------------------------------------------------------------------------------------
+
+await page.locator("#tabEducation").click();
+check(
+  "the education tab swaps the view",
+  await page.locator("#viewEducation").isVisible() && !(await page.locator("#viewRatings").isVisible()),
+);
+
+const eduNotice = await page.locator("#viewEducation .notice").innerText();
+check(
+  "the education notice is short, not a wall of text",
+  eduNotice.length > 0 && eduNotice.length < 300,
+  `${eduNotice.length} chars`,
+);
+
+const guideCards = await page.locator("#eduGuide .card").count();
+check("the guide renders its full set of bite-sized cards", guideCards === 10, `got ${guideCards}`);
+
+// ⚠️ THE TL;DR MUST BE READABLE WITHOUT OPENING ANYTHING. The whole design point for someone who
+// finds long passages hard going is that the short answer is already on screen — "A bit more" is an
+// optional extra layer, never the only place the basic idea lives. This asserts it stays short too,
+// so a future edit can't quietly turn the always-visible line into a paragraph.
+const firstTldr = await page.locator("#eduGuide .edu-tldr").first().innerText();
+check(
+  "a guide card's short answer is visible without expanding anything",
+  firstTldr.length > 0 && firstTldr.length < 200,
+  `${firstTldr.length} chars: ${firstTldr.slice(0, 80)}`,
+);
+
+// ⚠️ "guaranteed returns" is deliberately NOT in this list — the safety card has to be able to name
+// that exact scam phrase to warn against it. These are phrasings the app itself would only ever use
+// to tell the reader what to do with money, which nothing in Education, or this whole project, may do.
+const eduText = await page.locator("#viewEducation").innerText();
+check(
+  "education content never crosses into advice",
+  !/\b(buy now|you should invest|time to buy|we recommend buying)\b/i.test(eduText),
+  eduText.slice(0, 200),
+);
+
+// ---- glossary ----
+await page.locator("#eduTabGlossary").click();
+check(
+  "the glossary tab swaps the inner view",
+  await page.locator("#eduGlossary").isVisible() && !(await page.locator("#eduGuide").isVisible()),
+);
+
+const glossCount = await page.locator("#glossList .gloss-item").count();
+check("the full glossary lists every term", glossCount === 24, `got ${glossCount}`);
+
+await page.locator("#glossSearch").fill("wallet");
+const filtered = await page.locator("#glossList .gloss-item").allTextContents();
+check(
+  "searching the glossary filters to matching terms",
+  filtered.length > 0 && filtered.length < glossCount && filtered.some((t) => /wallet/i.test(t)),
+  `got ${filtered.length} of ${glossCount}`,
+);
+
+await page.locator("#glossSearch").fill("xyznonsense");
+const noMatch = await page.locator("#glossList").innerText();
+check(
+  "an unmatched search says so rather than showing a blank list",
+  /no terms match/i.test(noMatch),
+  noMatch.slice(0, 100),
+);
+
+await page.locator("#glossSearch").fill("");
+await page.locator("#eduTabGuide").click();
+await page.locator("#tabRatings").click();
+
+// ⚠️ REDUCED MOTION MUST ACTUALLY REMOVE THE ANIMATIONS, NOT JUST BE ASKED TO. SMIL <animate> tags
+// ignore CSS `animation-play-state`, so the only real off switch is never emitting them — this
+// proves that branch on a fresh load, rather than trusting the code path was taken. Reusing `page`
+// (not a new page) matters: the fetch stub was installed via `page.addInitScript`, which reruns on
+// every navigation of THIS page, but a brand-new page would hit the real, sandbox-blocked network
+// and its cards would never render at all — that was the first version's actual failure.
+await page.emulateMedia({ reducedMotion: "reduce" });
+await page.reload();
+await page.waitForSelector(".card", { timeout: 15000 });
+const animatedTags = await page.evaluate(() =>
+  document.querySelectorAll("#eduGuide animate, #eduGuide animateTransform").length,
+);
+check("reduced motion strips the icon animations entirely", animatedTags === 0, `got ${animatedTags}`);
+await page.emulateMedia({ reducedMotion: "no-preference" });
 
 // ---------------------------------------------------------------------------------------------
 // Discover

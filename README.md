@@ -104,6 +104,21 @@ writing down what you already own.
   pooling plus same-day and 30-day rules), and quietly approximating them would be worse than not
   offering the number at all.
 
+## Education
+
+A fourth tab: a plain-English guide to crypto and a glossary, built to be readable at a glance —
+short cards, one idea each, nothing you have to read a paragraph to get the gist of.
+
+- **Guide** — ten short cards (what's a blockchain, a wallet, a private key, why prices swing so
+  much, what to watch out for, and so on), each with a small looping animated icon and a one- or
+  two-sentence answer that's visible straight away. Tap "A bit more" only if you want the extra
+  layer — you never have to.
+- **Glossary** — 24 terms explained in one line each, written simply, with a search box to jump
+  straight to a word.
+
+Like everything else here, it's just plain HTML and JS baked into the page — nothing to load, no
+network call, nothing that can go stale.
+
 ### Running the flow snapshot on demand
 
 The app cannot start the robot by itself — asking GitHub to run a workflow needs a credential, and
@@ -167,7 +182,7 @@ To put it on your phone: serve the folder over HTTP and add it to the Home Scree
 node build.ts                  # rebuild first — every check below reads the BUILT page
 npx tsc --noEmit               # typecheck
 node --test "test/*.test.ts"   # 83 engine tests
-node test/app-smoke.mjs        # 37 browser checks against the BUILT page
+node test/app-smoke.mjs        # 47 browser checks against the BUILT page
 ```
 
 Or `npm run check`, which runs all four in that order.

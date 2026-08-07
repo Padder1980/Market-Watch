@@ -66,7 +66,7 @@ npm ci                         # once
 node build.ts                  # rebuild index.html — run after ANY edit to src/, entry.ts or shell.html
 npx tsc --noEmit               # typecheck (must be clean — covers tools/ too, not just the browser bundle)
 node --test "test/*.test.ts"   # 83 engine tests
-node test/app-smoke.mjs        # 37 browser checks against the BUILT page
+node test/app-smoke.mjs        # 47 browser checks against the BUILT page
 node tools/paper-round.ts --dry     # the daily flows robot, without writing anything
 node tools/discover-round.ts --dry  # the nightly market scan, without writing anything
 npm run check                  # build + typecheck + tests + smoke, in that order
@@ -563,6 +563,60 @@ assigning it in the constructor body — plain enough for both toolchains. **Any
 script that imports from `src/` should be treated as a second consumer with its own constraints**,
 not assumed to inherit whatever the browser bundle already tolerates.
 
+## Education — a plain-English guide and glossary (2026-08-08)
+
+He asked for a fourth tab, by name, after being told this is not a recommendation engine — the
+honest alternative to "tell me what to buy" is "help me actually understand this myself." He was
+explicit about the constraints: ADHD, finds long passages hard to read, wants a glossary explained
+"like I'm a child," and wants visual, moving examples, not more prose.
+
+⚠️ **EVERYTHING IS STATIC AND LOCAL — NO FETCH, NO STORAGE KEY, NO NEW NETWORK CALL.** `EDU_GUIDE`
+and `EDU_GLOSSARY` in `shell.html` are plain arrays rendered once at boot (`renderEduGuide()`,
+`renderEduGlossary()`), the same way the rest of the page avoids re-deriving static content. There
+is nothing here to cache, go stale, or fail to load — the one tab in this app that cannot break from
+a bad network day.
+
+⚠️ **THE SHORT ANSWER MUST BE VISIBLE WITHOUT OPENING ANYTHING.** Ten guide cards, each a bolded
+one-line question, an always-visible one-or-two-sentence answer (`.edu-tldr`), and an optional
+`<details>` "A bit more" for anyone who wants the extra layer. Burying the basic answer behind a tap
+would defeat the actual ask — someone who struggles with long text should not have to click to find
+out whether a paragraph is worth reading. `test/app-smoke.mjs` asserts the TL;DR is both present and
+short (<200 chars), so a future edit can't quietly turn it back into a paragraph.
+
+⚠️ **THE ICONS ARE SMIL, NOT CSS ANIMATION — AND THAT CHOICE HAS A REAL ACCESSIBILITY COST TO MANAGE.**
+"Dynamic/moving" visuals were the explicit request, and a self-contained page with no external
+assets rules out GIFs or video, so each concept gets a small inline SVG that animates itself
+natively (`<animate>`/`<animateTransform>`, no JS animation loop). The cost: SMIL animations **ignore
+CSS `animation-play-state`**, so there is no way to pause them after the fact for
+`prefers-reduced-motion`. The fix is upstream — `eduIconSvg()` wraps every animate tag in `A(xml)`,
+which returns `""` outright when `matchMedia("(prefers-reduced-motion: reduce)").matches`, so a
+reduced-motion session never gets the tags in the first place and sees the static base shape only.
+The smoke test proves this on a fresh load (`emulateMedia({reducedMotion: "reduce"})` then reload,
+then assert zero `<animate>`/`<animateTransform>` elements exist in the DOM) rather than trusting
+that the code path was taken — a wrapper that silently stopped firing would look identical to a
+correct one in every other check.
+
+⚠️ **THE GLOSSARY IS WRITTEN ALPHABETICALLY BY HAND, NOT SORTED AT RENDER TIME.** Someone who wants
+to browse rather than search should be able to scan it top to bottom the same way every time; a
+render-time sort would be redundant work for a list that never reorders. The search box
+(`#glossSearch`, filtering on term OR definition substring) is for jumping straight to a word, never
+required to use the page.
+
+⚠️ **"THIS APP" TERMS ARE MARKED AS SUCH, DELIBERATELY DUPLICATING WORDING ALREADY ON THE RATINGS
+CARDS.** Composite score, Network, Risk band and Trend are both general crypto vocabulary and this
+app's own pillar names, and the definitions given here describe THIS APP'S specific meaning of each
+(e.g. "Risk band (this app) — low, moderate, high or very high," matching `RISK_STAR_CAP`'s bands
+exactly) rather than a generic finance definition that might not match what the Ratings tab actually
+shows. Two different apps could reasonably use "risk" to mean different things; this glossary is
+explicitly not trying to be a general dictionary.
+
+⚠️ **NO ADVICE LANGUAGE, ENFORCED BY THE SAME DISCIPLINE AS EVERYWHERE ELSE IN THIS APP.**
+`test/app-smoke.mjs` asserts the Education view's full text never contains "buy now," "you should
+invest," "time to buy," or "we recommend buying." Deliberately excluded from that list:
+**"guaranteed returns"** — the safety card has to be able to name that exact scam phrase
+("guaranteed returns" is one of the three red flags it lists) in order to warn against it, and a
+regex naive to context would fail the safety copy for containing the words it exists to warn about.
+
 ## Storage keys
 
 `mkt_watchlist_v*`, `mkt_keys_v*`, `mkt_currency_v*`, `mkt_sort_v*`, `mkt_cache_v*`, `mkt_theme_v*`,
@@ -588,7 +642,7 @@ be phrased as a recommendation to buy or sell.
 ## Current status
 
 Standing on its own since the move from Inte-Run (2026-08-06). Build clean, `tsc --noEmit` clean,
-**83 engine tests** passing, **37 browser smoke checks** passing.
+**83 engine tests** passing, **47 browser smoke checks** passing.
 
 **The paper round has now run against the real pages and it works.** First real success 2026-08-07:
 a genuine 15-row Bitcoin ETF flow scrape committed to `data/flows.json`, verified against the actual
@@ -612,5 +666,13 @@ scored with the identical `rateAsset` engine and ranked by the identical composi
 by raw price movement. Built in direct response to his own words — *"I need you to be the
 intelligence that brings all the relevant information to my attention so that I can make an informed
 decision"* — held apart from the recommendation engine he separately and explicitly did not get.
+
+**Education shipped 2026-08-08** — a fourth tab: a ten-card plain-English guide (bite-sized, always
+a one-line answer visible, animated SVG icon per concept, "A bit more" behind a tap for anyone who
+wants it) and a 24-term searchable glossary written for a child. Built for the owner's own stated
+ADHD and difficulty with long passages. Entirely static and local — no fetch, no storage key, nothing
+that can go stale. Icons use SMIL, not CSS, animation, gated off entirely under
+`prefers-reduced-motion` (SMIL ignores `animation-play-state`, so the only real off switch is never
+emitting the tags). +10 smoke checks (37 → 47).
 
 Update this section as you go.
