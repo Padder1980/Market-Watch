@@ -46,14 +46,38 @@ const DRY = process.argv.includes("--dry");
 const UA =
   "Market-Watch/1.0 (+https://github.com/Padder1980/Market-Watch) personal daily snapshot, 1 req/day";
 
-const FARSIDE = [
-  "https://farside.co.uk/bitcoin-etf-flow-all-data/",
-  "https://farside.co.uk/btc/",
+/**
+ * One entry per coin with a real US spot ETF, each with its own pair of Farside pages (the "all
+ * data" one, then the short "current" one as the fallback `mergeDaily` was built for). Adding a
+ * coin here is the WHOLE change needed when its own ETF launches — everything else generalises.
+ */
+const ETF_ASSETS: { id: string; label: string; urls: string[] }[] = [
+  {
+    id: "bitcoin",
+    label: "Bitcoin",
+    urls: ["https://farside.co.uk/bitcoin-etf-flow-all-data/", "https://farside.co.uk/btc/"],
+  },
+  {
+    id: "ethereum",
+    label: "Ethereum",
+    urls: ["https://farside.co.uk/ethereum-etf-flow-all-data/", "https://farside.co.uk/eth/"],
+  },
 ];
 const TREASURIES = ["https://bitbo.io/treasuries/"];
 
-interface Stored {
+interface StoredAsset {
   etfDaily?: [string, number][];
+  etfAsOf?: string | null;
+}
+
+/**
+ * ⚠️ `assets` IS KEYED BY COINGECKO ID, NOT A FLAT BITCOIN-SHAPED OBJECT. The original file (before
+ * 2026-08-08) assumed one coin; Ethereum's real ETF page meant it needed to hold more than one
+ * asset's flow history side by side. `flowStatsFor` (`src/flows-parse.ts`) is the one place that
+ * reads this shape back out, for both the browser and the nightly Discover scan.
+ */
+interface Stored {
+  assets?: Record<string, StoredAsset>;
   corpHoldingsBtc?: number | null;
   corpChangeBtc?: number | null;
   corpChangeDays?: number | null;
@@ -78,11 +102,26 @@ async function getText(url: string): Promise<string | null> {
 }
 
 function readStored(): Stored {
+  let parsed: (Stored & { etfDaily?: [string, number][] }) | Record<string, never>;
   try {
-    return JSON.parse(readFileSync(OUT, "utf8")) as Stored;
+    parsed = JSON.parse(readFileSync(OUT, "utf8"));
   } catch {
     return {};
   }
+  // ⚠️ ONE-TIME MIGRATION FROM THE PRE-2026-08-08 FLAT SHAPE. The very first real committed file
+  // (2026-08-07, 15 genuine Bitcoin flow rows) predates the multi-asset `assets` shape and has
+  // `etfDaily` at the top level instead. Without this, that file's `assets` reads as undefined, the
+  // Bitcoin loop starts from zero stored history, and the first 15 real days this whole design
+  // exists to accumulate are silently thrown away on the very next run — the accumulation-deadlock
+  // bug's sibling, caused by a schema change instead of a sanity gate this time.
+  if (!parsed.assets && Array.isArray(parsed.etfDaily) && parsed.etfDaily.length > 0) {
+    const sorted = [...parsed.etfDaily].sort((a, b) => (a[0] < b[0] ? -1 : 1));
+    return {
+      ...parsed,
+      assets: { bitcoin: { etfDaily: sorted, etfAsOf: sorted[sorted.length - 1]?.[0] ?? null } },
+    };
+  }
+  return parsed as Stored;
 }
 
 async function main(): Promise<void> {
@@ -91,36 +130,41 @@ async function main(): Promise<void> {
   const notes: string[] = [];
   let failed = false;
 
-  // ---- ETF flows -----------------------------------------------------------------------------
-  console.log("ETF flows:");
-  let etfDaily = stored.etfDaily;
-  let gotFlows = false;
-  for (const url of FARSIDE) {
-    const html = await getText(url);
-    if (!html) continue;
-    const parsed = parseFarsideFlows(html);
-    if (!parsed) {
-      console.log(`  ${url} -> table not recognised (${html.length} bytes)`);
-      continue;
+  // ---- ETF flows, one coin at a time ----------------------------------------------------------
+  const assets: Record<string, StoredAsset> = { ...(stored.assets ?? {}) };
+  for (const asset of ETF_ASSETS) {
+    console.log(`ETF flows (${asset.label}):`);
+    let etfDaily = assets[asset.id]?.etfDaily;
+    let gotFlows = false;
+    for (const url of asset.urls) {
+      const html = await getText(url);
+      if (!html) continue;
+      const parsed = parseFarsideFlows(html);
+      if (!parsed) {
+        console.log(`  ${url} -> table not recognised (${html.length} bytes)`);
+        continue;
+      }
+      // ⚠️ Merge, never replace. The short table carries only recent days; replacing with it would
+      // throw away the history the rolling windows self-calibrate against, and the pillar would go
+      // quiet for weeks with nothing in the logs to explain it.
+      const merged = mergeDaily(etfDaily, parsed.daily);
+      const bad = checkFlowSanity(merged);
+      if (bad) {
+        console.log(`  ${url} -> REJECTED: ${bad}`);
+        continue;
+      }
+      etfDaily = merged;
+      gotFlows = true;
+      console.log(`  ${url} -> ok, ${parsed.daily.length} rows, newest ${parsed.asOf}`);
+      break;
     }
-    // ⚠️ Merge, never replace. The short table carries only recent days; replacing with it would
-    // throw away the history the rolling windows self-calibrate against, and the pillar would go
-    // quiet for weeks with nothing in the logs to explain it.
-    const merged = mergeDaily(etfDaily, parsed.daily);
-    const bad = checkFlowSanity(merged);
-    if (bad) {
-      console.log(`  ${url} -> REJECTED: ${bad}`);
-      continue;
+    if (gotFlows && etfDaily) {
+      assets[asset.id] = { etfDaily, etfAsOf: etfDaily[etfDaily.length - 1]?.[0] ?? null };
+    } else {
+      failed = true;
+      notes.push(`${asset.label} ETF flow refresh failed on this run; its stored data was left as it was.`);
+      console.log(`  NO USABLE ${asset.label.toUpperCase()} FLOW DATA THIS RUN`);
     }
-    etfDaily = merged;
-    gotFlows = true;
-    console.log(`  ${url} -> ok, ${parsed.daily.length} rows, newest ${parsed.asOf}`);
-    break;
-  }
-  if (!gotFlows) {
-    failed = true;
-    notes.push("ETF flow refresh failed on this run; the stored file was left as it was.");
-    console.log("  NO USABLE FLOW DATA THIS RUN");
   }
 
   // ---- Corporate holdings --------------------------------------------------------------------
@@ -186,7 +230,7 @@ async function main(): Promise<void> {
   }
 
   const out: Stored = {
-    etfDaily: etfDaily ?? [],
+    assets,
     corpHoldingsBtc: corpHoldings,
     corpChangeBtc,
     corpChangeDays,
@@ -195,13 +239,23 @@ async function main(): Promise<void> {
     notes,
   };
 
+  const rowCounts = Object.entries(assets)
+    .map(([id, a]) => `${id}=${a.etfDaily?.length ?? 0}`)
+    .join(", ");
+
   if (DRY) {
     console.log("\n--dry, not writing. Would write:");
-    console.log(JSON.stringify({ ...out, etfDaily: `[${(etfDaily ?? []).length} rows]`, corpHistory: `[${trimmed.length} rows]` }, null, 2));
+    console.log(JSON.stringify(
+      { ...out, assets: Object.fromEntries(
+        Object.entries(assets).map(([id, a]) => [id, { ...a, etfDaily: `[${a.etfDaily?.length ?? 0} rows]` }]),
+      ), corpHistory: `[${trimmed.length} rows]` },
+      null,
+      2,
+    ));
   } else {
     mkdirSync(dirname(OUT), { recursive: true });
     writeFileSync(OUT, JSON.stringify(out, null, 1), "utf8");
-    console.log(`\nWrote ${OUT} (${(etfDaily ?? []).length} flow rows, ${trimmed.length} treasury snapshots)`);
+    console.log(`\nWrote ${OUT} (flow rows: ${rowCounts}; ${trimmed.length} treasury snapshots)`);
   }
 
   // ⚠️ Exit non-zero when the flow half failed, so the Action goes red. A paper round that silently

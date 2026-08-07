@@ -36,12 +36,15 @@ src/             pure TypeScript engine, no runtime dependencies, fully unit-tes
   indicators.ts    moving averages, RSI, drawdown, volatility, trend fit
   score.ts         the pillars, the composite, the caps
   providers.ts     API adapters (browser fetch)
-  flows-parse.ts   pure parsers for the paper round's HTML — no fetch, so they are unit-testable
+  flows-parse.ts   pure parsers for the paper round's HTML, + flowStatsFor (shared file reader)
+  discover.ts      pure diffing/filtering for the nightly market scan
   holdings.ts      the transaction book: average-cost pooling, value, gain
   types.ts         shared types
-tools/           NOT shipped to the browser
-  paper-round.ts   the daily robot: reads free pages server-side, writes data/flows.json
-data/flows.json  committed by the robot; the page fetches it from its own origin
+tools/           NOT shipped to the browser, run directly via `node tools/x.ts`
+  paper-round.ts     the daily robot: reads free pages server-side, writes data/flows.json
+  discover-round.ts  the nightly market-cap scan: writes data/discover.json
+data/flows.json     committed by the paper round; the page fetches it from its own origin
+data/discover.json  committed by the discover round; same relative-URL pattern
 entry.ts         the engine's public surface, bundled to the browser global `MK`
 shell.html       the page: markup, CSS, and all the UI code
 build.ts         esbuild bundles `entry.ts` and inlines it into shell.html -> index.html
@@ -61,11 +64,12 @@ moving the markup into a template literal in `build.ts`.**
 ```bash
 npm ci                         # once
 node build.ts                  # rebuild index.html — run after ANY edit to src/, entry.ts or shell.html
-npx tsc --noEmit               # typecheck (must be clean)
-node --test "test/*.test.ts"   # 67 engine tests
-node test/app-smoke.mjs        # 33 browser checks against the BUILT page
-node tools/paper-round.ts --dry  # the daily robot, without writing anything
-npm run check                  # all four, in that order
+npx tsc --noEmit               # typecheck (must be clean — covers tools/ too, not just the browser bundle)
+node --test "test/*.test.ts"   # 83 engine tests
+node test/app-smoke.mjs        # 37 browser checks against the BUILT page
+node tools/paper-round.ts --dry     # the daily flows robot, without writing anything
+node tools/discover-round.ts --dry  # the nightly market scan, without writing anything
+npm run check                  # build + typecheck + tests + smoke, in that order
 ```
 
 ⚠️ **Check the build's EXIT CODE before trusting any check after it.** A failed build leaves the
@@ -441,6 +445,124 @@ The workflow also has a **08:10 UTC retry** alongside the 21:40 run. It is a ret
 reading: the commit step only commits an actual change, so a successful evening makes it a no-op,
 and a night when the site was slow heals by breakfast instead of leaving the pillar stale all day.
 
+## Ethereum joined Bitcoin (2026-08-08)
+
+The owner asked to widen coverage to "all cryptocurrency" and to invest something himself: he wants
+"the intelligence that brings all the relevant information to my attention," not a system that names
+winners. See the next section for the feature that answered THAT half of the request; this one
+covers the more literal "add more coins" half.
+
+**What actually generalised, and what didn't — decided by what genuinely exists to be measured, not
+by ambition:**
+- **Trend + Risk already worked for any CoinGecko-listed coin.** No change needed — anything added to
+  the watchlist via Settings was already scored on these two. Worth saying out loud: the owner did
+  not know this was already true.
+- **Flows now covers Ethereum too**, because it genuinely has a US spot ETF and Farside genuinely
+  publishes `farside.co.uk/eth/` in the identical table shape to Bitcoin's page. `ETF_ASSETS` in
+  `tools/paper-round.ts` is the whole change — add a coin's id + its two Farside URLs and the
+  existing parser, sanity gate and merge logic apply unchanged.
+- **Network stays Bitcoin-only, and this is a wall, not a gap to close later.** Ethereum has had no
+  hash rate since the 2022 Merge to proof-of-stake, so there is no equivalent to measure the same
+  way. Etherscan's daily transaction-count history — the obvious substitute — is gated behind their
+  paid Standard plan, confirmed by search before writing any code. **Do not force a weaker or paid
+  signal in to fill this gap**; same rule as the corporate-treasuries dead end.
+
+⚠️ **`data/flows.json` IS NOW KEYED BY ASSET, AND ONE FUNCTION READS IT BACK FOR BOTH CALLERS.**
+`flowStatsFor(raw, id)` in `src/flows-parse.ts` turns the committed file into one coin's `FlowStats`,
+called both by the browser (`fetchFlows`, after a `fetch()`) and by the nightly Discover scan (after
+a plain `readFileSync` — no HTTP round trip needed when the file is already on the same disk). Parsing
+"what does this JSON mean for asset X" is shape logic, not network logic, and writing it twice is how
+the two versions drift. Corporate holdings stay a single top-level field, attached only when
+`id === "bitcoin"` — that phenomenon barely exists yet for any other coin.
+
+⚠️ **THE FIRST COMMITTED FILE PREDATES THIS SCHEMA, AND THE ROBOT MIGRATES IT ITSELF.** The real
+15-row Bitcoin scrape from 2026-08-07 was written in the old flat shape (`etfDaily` at the top
+level). `readStored()` in `tools/paper-round.ts` detects that shape on read and folds it into
+`assets.bitcoin` before anything else runs — without this, the very history the accumulation design
+exists to build gets thrown away by a schema change instead of a sanity gate, which is the sibling of
+the accumulation-deadlock bug from the day before, wearing a different cause.
+
+## Discover — the owner's actual request, and the line drawn to build it responsibly
+
+He said it in as many words: *"I want you to be the intelligence that brings all the relevant
+information to my attention so that I can make an informed decision."* That is a real, legitimate
+ask and materially different from "tell me what to buy," which was separately and explicitly
+declined in the same conversation. The distinction is the entire design brief for this feature:
+
+⚠️ **DISCOVER RANKS BY THE SAME EVIDENCE THE WATCHLIST USES, NEVER BY RAW PRICE MOVEMENT.**
+`tools/discover-round.ts` imports `rateAsset` UNCHANGED — there is no second, looser scoring pass for
+coins outside the watchlist. A "top gainers" list built from 24h price change is precisely the
+mechanism this project's own README already warns about (*"momentum... is also the mechanism by
+which people buy tops"*), and building one to answer "surface things I might not notice" would
+smuggle the declined recommendation-engine back in wearing a different name. Sorting is by
+`stars * 1000 + composite` — the exact fields `rankRatings`'s default sort already uses.
+
+⚠️ **THE UNIVERSE IS RANKED BY MARKET CAP, NOT BY ANY OPINION.** `fetchTopByMarketCap` takes
+CoinGecko's `order=market_cap_desc` as-is. Hand-picking which ~25 coins get shown would itself be a
+curatorial, semi-advisory act — "we chose to show you these and not those" is a judgement call by
+another name. Ranking by an objective, external, already-public number sidesteps that entirely.
+
+⚠️ **STABLECOINS ARE EXCLUDED, AND IT IS A SCOPE FILTER, NOT A QUALITY JUDGEMENT.** `STABLECOIN_IDS`
+in `src/discover.ts`. A stablecoin's entire design point is to not move, so Trend/Risk have nothing
+to say about one — including it just crowds out coins the engine can actually inform. Do not read
+this list as "coins we think are bad"; it is "coins this specific engine cannot evaluate at all."
+
+⚠️ **"NEW TO THE LIST" AND "SCORE ROSE" ARE DIFFERENT FACTS, PROVEN WRONG BEFORE IT SHIPPED.**
+`diffAgainstPrevious` in `src/discover.ts` was written test-first specifically because the naive
+version — treat an absent yesterday as a baseline of 0 — reports every fresh entrant as a huge score
+jump, which is not true, it is just a coin the app has no memory of yet. `isNew` is a separate flag;
+`delta` stays `null` rather than being filled with a number that misleads by construction. Six tests
+in `test/discover.test.ts` hold this apart, including the case of a coin dropping OUT of today's scan
+(must produce no entry at all, not a phantom one).
+
+⚠️ **THE CARD SHOWS "EVIDENCE CHANGED", NOT "PRICE CHANGED", AS ITS OWN SIGNAL.** `discoverCardHtml`
+in `shell.html` badges `deltaComposite` (the app's own read of the coin shifting) separately from the
+ordinary daily price change already shown above it — repeating a price move as if it were new
+information would be exactly the thing this feature is supposed to avoid — dressing up an ordinary
+price move as something more than it is. The threshold is ±5 composite points; smaller drift is
+noise, not a notice.
+
+⚠️ **COMPUTED SERVER-SIDE, ONCE A DAY, NOT ON EVERY OPEN.** `tools/discover-round.ts` fetches one
+`coins/markets` call for the market-cap list, then ~25 sequential `market_chart` calls (1.5s apart —
+CoinGecko's own docs explicitly discourage high-frequency KEYLESS polling, and this respects that
+even though it only runs once daily) and writes `data/discover.json` — a compact, PRE-SCORED
+`DiscoverEntry[]`, not raw price history. The client fetches this once per session
+(`state.discoverEntries`, populated lazily when the tab is first opened) and renders it directly; it
+never re-runs `rateAsset` itself for Discover entries, because that already happened server-side.
+Sending 365 days of history for 25 coins just to redraw two percentages the server already knows
+would multiply the file size for nothing — `move1`/`move30` are pre-computed too.
+
+⚠️ **ONE BAD COIN MUST NOT SINK THE WHOLE SCAN, AND THE TOP-LEVEL FAILURE MUST STILL FAIL CLEANLY.**
+Two separate resilience layers, both found on this file's own first local run: a per-coin `try/catch`
+inside the loop (a single delisted id or a momentary timeout is logged and skipped, not fatal to the
+other 24), and a top-level `try/catch` around `main()` (the market-cap list call itself failing —
+which it did immediately, this sandbox blocks CoinGecko too — produced a raw uncaught stack trace
+before this was added; now it logs one clear line and exits 1). Below `MIN_SUCCESSFUL` (10) coins
+scored, the run refuses to publish a thin scan at all, same "refuse to write a guess" standard as the
+paper round.
+
+⚠️ **A SEPARATE WORKFLOW FILE, DELIBERATELY, EVEN THOUGH IT COULD SHARE ONE JOB WITH THE PAPER
+ROUND.** Chaining them as two steps in one job was considered and rejected: a rate-limited or flaky
+Discover scan (many more requests, more surface area for a hiccup) would then risk blocking the
+Flows commit too, depending on step failure semantics — the exact "a stuck run must never block the
+next" lesson from the day before, applied pre-emptively instead of learned the hard way twice.
+`discover-round.yml` runs at 22:15 UTC, after the paper round's 21:40, so Bitcoin/Ethereum's Discover
+entries CAN pick up the same evening's fresh flow data by reading the just-committed `data/flows.json`
+from disk — not guaranteed ordering across two workflows, only likely, and a day's lag if it ever
+runs the other way is fine.
+
+⚠️ **NODE'S NATIVE TYPESCRIPT EXECUTION REJECTS A SYNTAX ESBUILD ACCEPTS, AND IT WAS INVISIBLE UNTIL
+THIS FEATURE.** `ProviderError`'s constructor used to declare its field with the shorthand
+`constructor(message: string, readonly provider: string)`. esbuild transpiles that fine, so it was
+silently OK for the entire life of this project — `providers.ts` had only ever been consumed through
+the browser bundle. `discover-round.ts` is the first thing to `import` it directly into a script run
+via plain `node tools/x.ts` (no build step, the same way `paper-round.ts` has always run), and Node's
+"strip only" TypeScript mode throws outright on that syntax:
+`TypeScript parameter property is not supported in strip-only mode`. Fixed by declaring the field and
+assigning it in the constructor body — plain enough for both toolchains. **Any future `tools/*.ts`
+script that imports from `src/` should be treated as a second consumer with its own constraints**,
+not assumed to inherit whatever the browser bundle already tolerates.
+
 ## Storage keys
 
 `mkt_watchlist_v*`, `mkt_keys_v*`, `mkt_currency_v*`, `mkt_sort_v*`, `mkt_cache_v*`, `mkt_theme_v*`,
@@ -466,20 +588,29 @@ be phrased as a recommendation to buy or sell.
 ## Current status
 
 Standing on its own since the move from Inte-Run (2026-08-06). Build clean, `tsc --noEmit` clean,
-**67 engine tests** passing, **33 browser smoke checks** passing.
+**83 engine tests** passing, **37 browser smoke checks** passing.
 
-Since the move: a **Network pillar** (Bitcoin on-chain activity and miner behaviour, from
-Blockchain.com) and a **Flows pillar** fed by the **paper round** (US spot ETF flows and
-public-company holdings, via a daily GitHub Action). Together those cover four of the owner's eight
-stated signals — ETF flows, institutional purchases, on-chain activity and miner behaviour.
+**The paper round has now run against the real pages and it works.** First real success 2026-08-07:
+a genuine 15-row Bitcoin ETF flow scrape committed to `data/flows.json`, verified against the actual
+GitHub Action log (not just a green checkmark) and cross-checked against independently-reported
+news figures for the same two days. Getting there cost two real, found-not-guessed bugs, both fixed
+and documented in place: `checkFlowSanity`'s row-count floor assumed a page that had started
+bot-blocking GitHub's requests would always work (fixed, 100→5 rows), and the commit step's
+`git diff` was blind to a file it had never tracked before (fixed, stage before diffing). Corporate
+holdings remain undeliverable — the diagnostic added specifically to explain this found ZERO
+"`<number> BTC`"-shaped text anywhere on the source page, pointing at client-side rendering rather
+than a format mismatch. Not built: exchange reserves (the owner's #3) — same shape of dead end.
 
-⚠️ **THE PAPER ROUND HAS NOT YET RUN AGAINST THE REAL PAGES.** This sandbox's proxy blocks those
-hosts, so the parsers are proved only against fixture HTML. **Watch the first scheduled Action run**
-(21:40 UTC, Mon–Sat) or trigger it by hand from the Actions tab. If it goes red with "table not
-recognised", read the logged byte count, fix the parser against what the page really says, and do
-not loosen `saneFlows` to make it pass.
+**Ethereum joined Bitcoin (2026-08-08):** its own real Farside ETF page, generalised into
+`data/flows.json`'s new per-asset `assets` shape. Network stays Bitcoin-only — Ethereum has had no
+hash rate since 2022, and the free-data search for a substitute came up empty (Etherscan's history
+endpoint is paywalled), documented rather than forced.
 
-Not built: exchange reserves (the owner's #3) — see the paper-round section for why, and for the
-shape a fix would take.
+**Discover shipped the same day** — a nightly market-cap-ranked scan (`tools/discover-round.ts` +
+`discover-round.yml`, 22:15 UTC) that surfaces coins the owner never added to his own watchlist,
+scored with the identical `rateAsset` engine and ranked by the identical composite/stars fields, never
+by raw price movement. Built in direct response to his own words — *"I need you to be the
+intelligence that brings all the relevant information to my attention so that I can make an informed
+decision"* — held apart from the recommendation engine he separately and explicitly did not get.
 
 Update this section as you go.

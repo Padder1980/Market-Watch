@@ -136,6 +136,33 @@ export interface RiskProfile {
   reasons: string[];
 }
 
+/**
+ * One row of the nightly "Discover" scan — computed server-side by `tools/discover-round.ts` and
+ * committed as `data/discover.json`, the same relative-URL-from-own-origin pattern as flows. The
+ * `rating` field is a real `Rating` produced by the SAME `rateAsset()` the page uses for the
+ * owner's own watchlist — Discover never runs a second, looser scoring pass.
+ *
+ * ⚠️ `move1`/`move30` ARE PRE-COMPUTED, NOT DERIVED CLIENT-SIDE. Sending 365 days of price history
+ * per coin for ~25 coins just to redraw two percentages the server already knows would multiply the
+ * file size for no reason — Discover deliberately carries the RESULT of scoring, not the raw
+ * ingredients, unlike a live watchlist snapshot which needs the full series to score at all.
+ */
+export interface DiscoverEntry {
+  id: string;
+  symbol: string;
+  name: string;
+  price: number;
+  currency: string;
+  /** 24h and 30d price change as fractions (0.05 = +5%), or null if not computable. */
+  move1: number | null;
+  move30: number | null;
+  /** Change in `rating.composite` since the previous day's scan. Null when `isNew` is true. */
+  deltaComposite: number | null;
+  /** This coin was not in yesterday's scanned set at all — a genuinely new appearance. */
+  isNew: boolean;
+  rating: Rating;
+}
+
 export interface Rating {
   id: string;
   symbol: string;

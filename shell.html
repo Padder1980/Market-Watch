@@ -174,7 +174,8 @@ body {
 .sheet h2 { margin: 0 0 4px; font-size: 18px; }
 .sheet .hint { font-size: 13px; color: var(--ink-faint); margin: 0 0 16px; }
 label { display: block; font-size: 13px; font-weight: 600; margin: 14px 0 5px; }
-label .note { display: block; font-weight: 400; color: var(--ink-faint); font-size: 12px; margin-top: 2px; }
+.note { color: var(--ink-faint); font-size: 12px; }
+label .note { display: block; font-weight: 400; margin-top: 2px; }
 input, select {
   width: 100%; font-size: 16px; font-family: inherit; padding: 10px 12px;
   border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); color: var(--ink);
@@ -252,14 +253,16 @@ input[type="text"] { font-family: var(--mono); }
   <div class="notice">
     <strong>These stars are not advice, and they are not a forecast.</strong>
     They count how many measurable signals currently line up — past price behaviour, published
-    analyst views, reported company financials, and for Bitcoin the money that has already moved
-    into or out of the ETFs plus how busy the chain is. Every star can be traced to its arithmetic:
+    analyst views, reported company financials, and for Bitcoin and Ethereum the money that has
+    already moved into or out of their ETFs, plus how busy Bitcoin's chain is. Every star can be
+    traced to its arithmetic:
     open <em>Show the working</em> on any row. Momentum is also the mechanism by which people buy
     tops, so the risk band is a hard cap, never an average.
   </div>
 
   <div class="tabs" id="tabs" role="tablist">
     <button class="tab" id="tabRatings" role="tab" aria-selected="true" data-view="ratings">Ratings</button>
+    <button class="tab" id="tabDiscover" role="tab" aria-selected="false" data-view="discover">Discover</button>
     <button class="tab" id="tabHoldings" role="tab" aria-selected="false" data-view="holdings">My holdings</button>
   </div>
 
@@ -275,6 +278,17 @@ input[type="text"] { font-family: var(--mono); }
   <div id="list"></div>
   </div>
 
+  <div id="viewDiscover" hidden>
+    <div class="notice">
+      <strong>This is not a list of what to buy.</strong>
+      It scans a wide, size-ranked set of coins once a day and scores every one of them with the
+      exact same arithmetic as your own watchlist — nothing here is chosen because it looks like it
+      will go up. A coin appears because its measurable evidence changed enough to be worth a
+      glance, not because the app thinks it is a good idea.
+    </div>
+    <div id="discover"></div>
+  </div>
+
   <div id="viewHoldings" hidden>
     <div class="notice">
       <strong>This is a record, not advice.</strong>
@@ -285,7 +299,7 @@ input[type="text"] { font-family: var(--mono); }
     <button class="btn" id="addTxBtn">Add a purchase or sale</button>
   </div>
 
-  <div class="foot">Build __BUILD__ · data from CoinGecko, Blockchain.com, Twelve Data, Finnhub, and Farside Investors via a daily snapshot · nothing leaves this device except calls to those APIs</div>
+  <div class="foot">Build __BUILD__ · data from CoinGecko, Blockchain.com, Twelve Data, Finnhub, and Farside Investors via a daily snapshot · Discover is a nightly market-cap scan, not a recommendation · nothing leaves this device except calls to those APIs</div>
 </div>
 
 <div class="sheet-ov" id="txOv">
@@ -425,7 +439,9 @@ input[type="text"] { font-family: var(--mono); }
     loading: false,
     view: "ratings",
     lots: read(K_LOTS, []),
-    editing: null
+    editing: null,
+    discoverEntries: null,
+    discoverAsOf: null
   };
 
   function $(id) { return document.getElementById(id); }
@@ -814,6 +830,133 @@ input[type="text"] { font-family: var(--mono); }
   }
 
   // -------------------------------------------------------------------------------------------
+  // Discover — a wider scan than the owner's own watchlist, scored the same honest way
+  // -------------------------------------------------------------------------------------------
+
+  /**
+   * ⚠️ FETCHED ONCE PER SESSION, NOT ON EVERY TAB SWITCH. `data/discover.json` only changes once a
+   * day (the nightly scan), so re-fetching it every time the tab opens buys nothing and just adds a
+   * network round trip. `state.discoverEntries` stays null until the first genuine fetch and is
+   * reused after that, same as `state.ratings` is not refetched on every render.
+   */
+  async function loadDiscover() {
+    if (state.discoverEntries) { renderDiscover(); return; }
+    var host = $("discover");
+    host.innerHTML = '<div class="status"><span class="spin"></span> Loading…</div>';
+    try {
+      var res = await fetch("./data/discover.json", { cache: "no-cache" });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      var data = await res.json();
+      state.discoverEntries = Array.isArray(data.entries) ? data.entries : [];
+      state.discoverAsOf = data.asOf || null;
+    } catch (e) {
+      state.discoverEntries = [];
+      state.discoverAsOf = null;
+    }
+    renderDiscover();
+  }
+
+  function discoverCardHtml(entry) {
+    var rating = entry.rating;
+    var cls = entry.move1 == null ? "flat" : entry.move1 > 0 ? "up" : entry.move1 < 0 ? "down" : "flat";
+    var risk = rating.risk.band;
+
+    var html = '<div class="card">';
+    html += '<div class="rowtop">';
+    html += '<div class="ident"><div class="sym">' + esc(entry.symbol) + "</div>";
+    html += '<div class="nm">' + esc(entry.name) + "</div></div>";
+    html += '<div class="px"><div class="val">' + esc(money(entry.price, entry.currency)) + "</div>";
+    html += '<div class="chg ' + cls + '">' + esc(pctText(entry.move1)) + " today</div></div>";
+    html += "</div>";
+
+    html += '<div class="verdict">' + starHtml(rating.stars);
+    html += '<span class="pill ' + risk + '">' + esc(risk.replace("-", " ")) + " risk</span>";
+    if (entry.move30 != null) {
+      html += '<span class="kind">30d ' + esc(pctText(entry.move30)) + "</span>";
+    }
+    // ⚠️ "NEW" AND "EVIDENCE MOVED" ARE SHOWN, "PRICE ROSE" IS NOT REPEATED HERE. The point of this
+    // badge is the thing Discover exists for — the app's own read of the coin changed, which is a
+    // different fact from the price ticking up, already shown above as the ordinary daily change.
+    if (entry.isNew) {
+      html += '<span class="kind">new to this list</span>';
+    } else if (entry.deltaComposite != null && Math.abs(entry.deltaComposite) >= 5) {
+      var dSign = entry.deltaComposite > 0 ? "+" : "";
+      html += '<span class="kind">evidence ' + dSign + Math.round(entry.deltaComposite) +
+        " since yesterday</span>";
+    }
+    html += "</div>";
+
+    html += '<div class="bars">';
+    html += barHtml("Trend", rating.trend);
+    if (rating.kind === "crypto") {
+      html += barHtml("Flows", rating.flows);
+      html += barHtml("Network", rating.network);
+    } else {
+      html += barHtml("Forecasts", rating.analyst);
+      html += barHtml("Business", rating.fundamentals);
+    }
+    html += "</div>";
+
+    html += '<details class="more"><summary>Show the working</summary><div class="working">';
+    html += "<h4>Overall</h4><ul><li>Composite score " + Math.round(rating.composite) +
+      "/100 across the pillars that had data, giving " + rating.stars + " star" +
+      (rating.stars === 1 ? "" : "s") + ".</li></ul>";
+    rating.caveats.forEach(function (c) {
+      html += '<div class="caveat">' + esc(c) + "</div>";
+    });
+    html += "<h4>Trend</h4>" + listHtml(rating.trend.reasons);
+    if (rating.kind === "crypto") {
+      html += "<h4>Institutional flows</h4>" + listHtml(rating.flows.reasons);
+      html += "<h4>On-chain network</h4>" + listHtml(rating.network.reasons);
+    } else {
+      html += "<h4>Published forecasts</h4>" + listHtml(rating.analyst.reasons);
+      html += "<h4>Business data</h4>" + listHtml(rating.fundamentals.reasons);
+    }
+    html += "<h4>Risk</h4>" + listHtml(rating.risk.reasons);
+    html += "</div></details>";
+    html += "</div>";
+    return html;
+  }
+
+  function renderDiscover() {
+    var host = $("discover");
+    var entries = state.discoverEntries || [];
+
+    if (!entries.length) {
+      host.innerHTML = '<div class="empty">Nothing to show yet — the nightly scan has not run, ' +
+        "or hasn't reached this device yet. Check back tomorrow.</div>";
+      return;
+    }
+
+    // ⚠️ EXCLUDE WHAT IS ALREADY BEING WATCHED. The whole point is coins the owner has not thought
+    // to add — repeating their own watchlist back at them here is noise, not discovery. This is a
+    // client-side filter against their OWN local watchlist, which the server-side scan cannot know.
+    var watchedIds = {};
+    state.watch.forEach(function (w) { watchedIds[w.id] = true; });
+    var shown = entries.filter(function (e) { return !watchedIds[e.id]; });
+
+    if (!shown.length) {
+      host.innerHTML = '<div class="empty">Every coin in tonight’s scan is already on your ' +
+        "watchlist — nothing new to surface today.</div>";
+      return;
+    }
+
+    // Ranked by the SAME composite/stars fields the Ratings tab sorts by — never by raw price move.
+    shown = shown.slice().sort(function (a, b) {
+      return (b.rating.stars * 1000 + b.rating.composite) - (a.rating.stars * 1000 + a.rating.composite);
+    });
+
+    var html = "";
+    if (state.discoverAsOf) {
+      html += '<div class="note" style="margin:0 0 10px">Scanned ' + esc(state.discoverAsOf) +
+        " · " + shown.length + " coin" + (shown.length === 1 ? "" : "s") +
+        " not already on your watchlist</div>";
+    }
+    shown.forEach(function (e) { html += discoverCardHtml(e); });
+    host.innerHTML = html;
+  }
+
+  // -------------------------------------------------------------------------------------------
   // Running the paper round on demand
   // -------------------------------------------------------------------------------------------
 
@@ -972,12 +1115,16 @@ input[type="text"] { font-family: var(--mono); }
   function setView(v) {
     state.view = v;
     $("viewRatings").hidden = v !== "ratings";
+    $("viewDiscover").hidden = v !== "discover";
     $("viewHoldings").hidden = v !== "holdings";
     $("tabRatings").setAttribute("aria-selected", String(v === "ratings"));
+    $("tabDiscover").setAttribute("aria-selected", String(v === "discover"));
     $("tabHoldings").setAttribute("aria-selected", String(v === "holdings"));
     if (v === "holdings") renderHoldings();
+    if (v === "discover") loadDiscover();
   }
   $("tabRatings").addEventListener("click", function () { setView("ratings"); });
+  $("tabDiscover").addEventListener("click", function () { setView("discover"); });
   $("tabHoldings").addEventListener("click", function () { setView("holdings"); });
 
   // ---- transaction sheet ----------------------------------------------------------------------

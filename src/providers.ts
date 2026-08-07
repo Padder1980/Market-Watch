@@ -18,6 +18,7 @@ import type {
   Fundamentals,
   NetworkStats,
 } from "./types.ts";
+import { flowStatsFor, type FlowsFile } from "./flows-parse.ts";
 
 export interface Keys {
   /** twelvedata.com — free tier covers daily price history. */
@@ -35,11 +36,17 @@ export interface WatchItem {
 
 /** Thrown with a readable message so the UI can show WHY a row is missing rather than a blank. */
 export class ProviderError extends Error {
-  constructor(
-    message: string,
-    readonly provider: string,
-  ) {
+  // ⚠️ NOT a constructor parameter property (`readonly provider: string` in the parameter list).
+  // esbuild transpiles that shorthand fine, so it was invisible as long as this file was only ever
+  // consumed through the browser bundle — but `tools/discover-round.ts` is the first thing to
+  // import providers.ts directly into a Node-executed .ts file (the same `node tools/x.ts`, no
+  // build step, this whole project runs on), and Node's native TS "strip only" mode throws on the
+  // syntax outright: `TypeScript parameter property is not supported in strip-only mode`. Declaring
+  // the field and assigning it in the body is the version both toolchains can read.
+  readonly provider: string;
+  constructor(message: string, provider: string) {
     super(message);
+    this.provider = provider;
     this.name = "ProviderError";
   }
 }
@@ -220,32 +227,21 @@ export async function fetchBitcoinNetwork(id: string): Promise<NetworkStats | nu
  * would reintroduce the cross-origin problem this design exists to avoid.
  *
  * A 404 is the NORMAL case before the robot's first run, and is not an error.
+ *
+ * ⚠️ ANY ASSET THE FILE HAS AN ENTRY FOR, NOT JUST BITCOIN. `data/flows.json` keys `assets` by
+ * CoinGecko id (Ethereum joined 2026-08-08, via the same Farside table format on its own page),
+ * so this function no longer gates on the id itself — `flowStatsFor` does, by looking the id up in
+ * the file and returning null when it genuinely has nothing for that coin. The shape-reading logic
+ * is shared with the nightly Discover scan (`tools/discover-round.ts`), which reads the same
+ * committed file from disk rather than over HTTP — see `flowStatsFor`'s own comment for why one
+ * function serves both.
  */
 export async function fetchFlows(id: string): Promise<FlowStats | null> {
-  if (id !== "bitcoin") return null;
   try {
     const res = await fetch("./data/flows.json", { cache: "no-cache" });
     if (!res.ok) return null;
-    const raw = (await res.json()) as {
-      etfDaily?: [string, number][];
-      corpHoldingsBtc?: number | null;
-      corpChangeBtc?: number | null;
-      corpChangeDays?: number | null;
-      fetchedAt?: string | null;
-    };
-    const rows = Array.isArray(raw.etfDaily) ? raw.etfDaily : [];
-    const clean = rows
-      .filter((r) => Array.isArray(r) && typeof r[0] === "string" && Number.isFinite(r[1]))
-      .sort((a, b) => (a[0] < b[0] ? -1 : 1));
-    const last = clean[clean.length - 1];
-    return {
-      etfDailyUsdM: clean.length > 0 ? clean.map((r) => r[1]) : null,
-      etfAsOf: last ? last[0] : null,
-      corpHoldingsBtc: raw.corpHoldingsBtc ?? null,
-      corpChangeBtc: raw.corpChangeBtc ?? null,
-      corpChangeDays: raw.corpChangeDays ?? null,
-      fetchedAt: raw.fetchedAt ?? null,
-    };
+    const raw = (await res.json()) as FlowsFile;
+    return flowStatsFor(raw, id);
   } catch {
     return null;
   }

@@ -10,6 +10,7 @@ import assert from "node:assert/strict";
 
 import {
   checkFlowSanity,
+  flowStatsFor,
   mergeDaily,
   parseFarsideFlows,
   parseFlowNumber,
@@ -244,4 +245,73 @@ test("the treasuries debug sample is empty when the page has nothing BTC-shaped 
   // This is the signal that the number is likely rendered by client-side JS rather than present in
   // the fetched HTML — a different problem from a formatting mismatch, and the log should say so.
   assert.deepEqual(treasuriesDebugSample("<p>Loading holdings…</p>"), []);
+});
+
+// ---------------------------------------------------------------------------------------------
+// Reading the committed file back out, per asset — shared by the browser and the Discover scan
+// ---------------------------------------------------------------------------------------------
+
+test("each asset in the file gets its own flow stats, keyed correctly", () => {
+  const file = {
+    assets: {
+      bitcoin: { etfDaily: [["2026-08-05", 100], ["2026-08-06", -40]] as [string, number][] },
+      ethereum: { etfDaily: [["2026-08-06", 12]] as [string, number][] },
+    },
+    corpHoldingsBtc: 1_262_540,
+    corpChangeBtc: 28_000,
+    corpChangeDays: 30,
+    fetchedAt: "2026-08-06",
+  };
+  const btc = flowStatsFor(file, "bitcoin");
+  assert.ok(btc);
+  assert.deepEqual(btc?.etfDailyUsdM, [100, -40]);
+  assert.equal(btc?.etfAsOf, "2026-08-06");
+
+  const eth = flowStatsFor(file, "ethereum");
+  assert.ok(eth);
+  assert.deepEqual(eth?.etfDailyUsdM, [12]);
+
+  // ⚠️ THE ETH FIGURES MUST NEVER LEAK INTO BTC'S ROW, OR VICE VERSA. Two assets sharing one file is
+  // new; a lookup keyed on the wrong id would silently hand one coin's flows to another's card.
+  assert.notDeepEqual(btc?.etfDailyUsdM, eth?.etfDailyUsdM);
+});
+
+test("corporate holdings attach ONLY to bitcoin, never to another asset sharing the file", () => {
+  const file = {
+    assets: { ethereum: { etfDaily: [["2026-08-06", 12]] as [string, number][] } },
+    corpHoldingsBtc: 1_262_540,
+    corpChangeBtc: 28_000,
+    corpChangeDays: 30,
+  };
+  const eth = flowStatsFor(file, "ethereum");
+  assert.ok(eth);
+  assert.equal(eth?.corpHoldingsBtc, null, "Ethereum must not inherit Bitcoin's treasury figure");
+});
+
+test("an asset absent from the file entirely reads as null, not an empty-but-present object", () => {
+  const file = { assets: { bitcoin: { etfDaily: [["2026-08-06", 12]] as [string, number][] } } };
+  assert.equal(flowStatsFor(file, "solana"), null);
+});
+
+test("bitcoin still returns a stats object even with zero ETF rows, so corp holdings can show", () => {
+  // ⚠️ THE ASYMMETRY IS DELIBERATE. Bitcoin can have something useful to say (corporate holdings)
+  // even when its OWN ETF scrape came back empty that run; every other asset has nothing else this
+  // file could tell it, so it is correctly null rather than an object with every field empty.
+  const file = { assets: {}, corpHoldingsBtc: 1_262_540 };
+  const btc = flowStatsFor(file, "bitcoin");
+  assert.ok(btc, "bitcoin must not read as null just because its ETF rows are empty this run");
+  assert.equal(btc?.corpHoldingsBtc, 1_262_540);
+  assert.equal(btc?.etfDailyUsdM, null);
+});
+
+test("a genuinely empty file (before the robot's first run) is null for other assets", () => {
+  // ⚠️ BITCOIN IS THE ONE EXCEPTION, AND DELIBERATELY SO — same as the case above, it may still
+  // have a corporate-holdings figure worth reporting even with zero ETF rows, so it always gets an
+  // object back (every field simply null) and `scoreFlows` is what decides there is nothing useful
+  // in it. Every other asset genuinely has nothing else this file could ever say about it.
+  const btc = flowStatsFor({}, "bitcoin");
+  assert.ok(btc, "bitcoin must still get a (mostly empty) stats object, not null");
+  assert.equal(btc?.etfDailyUsdM, null);
+  assert.equal(btc?.corpHoldingsBtc, null);
+  assert.equal(flowStatsFor({}, "ethereum"), null);
 });

@@ -1,0 +1,50 @@
+name: Discover round
+
+# Scans a wide, market-cap-ranked set of coins once a day and commits data/discover.json — the
+# server-side counterpart to the paper round. Runs the SAME rateAsset() the app uses for the
+# owner's own watchlist, over coins the owner never added, so something genuinely new can surface.
+# See tools/discover-round.ts and src/discover.ts for why this ranks by evidence, never by raw
+# price movement.
+
+on:
+  schedule:
+    # 22:15 UTC — after the paper round's 21:40 run, so Bitcoin/Ethereum's Discover entries can pick
+    # up the SAME evening's freshly-committed ETF flow data. Not guaranteed ordering across two
+    # separate workflows, only likely; a day's lag if it ever runs the other way round is fine.
+    - cron: "15 22 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: discover-round
+  cancel-in-progress: true
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Scan the market and score it
+        run: node tools/discover-round.ts
+
+      - name: Commit if anything changed
+        run: |
+          # ⚠️ Stage before diffing — see paper-round.yml's identical comment. A file `git` has never
+          # tracked is invisible to `git diff` until it is staged; this bit the paper round on its
+          # first real success and is fixed here from the start rather than waiting to rediscover it.
+          git add data/discover.json
+          if git diff --cached --quiet; then
+            echo "No change to data/discover.json"
+            exit 0
+          fi
+          git config user.name "market-watch-bot"
+          git config user.email "market-watch-bot@users.noreply.github.com"
+          git commit -m "Discover round: market scan $(date -u +%Y-%m-%d)"
+          git push

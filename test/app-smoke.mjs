@@ -66,15 +66,51 @@ await page.addInitScript(() => {
   // ⚠️ Dated TODAY. The staleness gate refuses anything older than a week, so a fixture with a
   // hardcoded past date would test the refusal path while appearing to test the happy one.
   etfDaily[etfDaily.length - 1][0] = new Date().toISOString().slice(0, 10);
+  // ⚠️ THE "assets" SHAPE, NOT THE OLD FLAT ONE. data/flows.json moved to keying flows by CoinGecko
+  // id (2026-08-08, when Ethereum joined Bitcoin) — a stub still shaped like the pre-migration file
+  // reads as "no data for this asset" to flowStatsFor and every flows-pillar check below goes n/a
+  // silently rather than failing loudly, which is worse than a wrong assertion.
   const flowsJson = {
-    etfDaily,
+    assets: { bitcoin: { etfDaily, etfAsOf: etfDaily[etfDaily.length - 1][0] } },
     corpHoldingsBtc: 1262540,
     corpChangeBtc: 28000,
     corpChangeDays: 30,
     fetchedAt: new Date().toISOString().slice(0, 10),
   };
+  // A minimal but shape-correct Discover snapshot: one coin already on the default watchlist
+  // (must be filtered OUT) and one that is not (must be shown).
+  function fakePillar(score) {
+    return { score, confidence: 1, reasons: ["fixture reason"] };
+  }
+  function fakeRating(id, symbol, name, stars, composite) {
+    return {
+      id, symbol, name, kind: "crypto", stars, composite,
+      trend: fakePillar(composite), analyst: fakePillar(null), fundamentals: fakePillar(null),
+      network: fakePillar(null), flows: fakePillar(null),
+      risk: { band: "moderate", annualisedVol: 0.3, maxDrawdown: 0.1, worstDay: 0.05, reasons: ["fixture risk reason"] },
+      caveats: [], missing: ["on-chain network activity", "institutional flows"],
+    };
+  }
+  const discoverJson = {
+    asOf: new Date().toISOString().slice(0, 10),
+    entries: [
+      {
+        id: "bitcoin", symbol: "BTC", name: "Bitcoin", price: 60000, currency: "USD",
+        move1: 0.01, move30: 0.1, deltaComposite: 3, isNew: false,
+        rating: fakeRating("bitcoin", "BTC", "Bitcoin", 4, 70),
+      },
+      {
+        id: "dogecoin", symbol: "DOGE", name: "Dogecoin", price: 0.2, currency: "USD",
+        move1: 0.02, move30: -0.05, deltaComposite: null, isNew: true,
+        rating: fakeRating("dogecoin", "DOGE", "Dogecoin", 3, 55),
+      },
+    ],
+  };
   window.fetch = async (url) => {
     const u = String(url);
+    if (u.includes("data/discover.json")) {
+      return { ok: true, status: 200, json: async () => discoverJson };
+    }
     if (u.includes("data/flows.json")) {
       return { ok: true, status: 200, json: async () => flowsJson };
     }
@@ -279,9 +315,51 @@ check(
 
 await page.locator("#tabRatings").click();
 
+// ---------------------------------------------------------------------------------------------
+// Discover
+// ---------------------------------------------------------------------------------------------
+
+await page.locator("#tabDiscover").click();
+check(
+  "the discover tab swaps the view",
+  await page.locator("#viewDiscover").isVisible() && !(await page.locator("#viewRatings").isVisible()),
+);
+
+const discoverNotice = await page.locator("#viewDiscover .notice").innerText();
+check(
+  "discover states plainly that it is not a buy list",
+  /not a list of what to buy/i.test(discoverNotice),
+  discoverNotice.slice(0, 200),
+);
+
+const discoverCards = await page.locator("#discover .card").count();
+check(
+  "a coin already on the watchlist is excluded from Discover",
+  discoverCards === 1,
+  `got ${discoverCards} cards — Bitcoin (on the watchlist) must not reappear here`,
+);
+
+const discoverText = await page.locator("#discover").innerText();
+check(
+  "the surfaced coin shows, and the excluded one does not",
+  /Dogecoin/i.test(discoverText) && !/Bitcoin/i.test(discoverText),
+  discoverText.slice(0, 200),
+);
+check(
+  "a coin new to the scan is labelled new, not given a fabricated delta",
+  /new to this list/i.test(discoverText),
+  discoverText.slice(0, 300),
+);
+
+await page.locator("#tabRatings").click();
+
 // Sorting must re-render without throwing.
+// ⚠️ SCOPED TO #list, NOT A BARE ".card". Discover renders its own .card elements into #discover,
+// left in the DOM (just hidden) after the tab is switched away from — an unscoped count here would
+// include Discover's leftover card and report 3, not 2, for reasons that have nothing to do with
+// sorting actually working.
 await page.locator('.chip[data-sort="trend"]').click();
-check("sorting by trend keeps the list rendered", (await page.locator(".card").count()) === 2);
+check("sorting by trend keeps the list rendered", (await page.locator("#list .card").count()) === 2);
 check("the chip reflects the active sort", (await page.locator('.chip[data-sort="trend"]').getAttribute("aria-pressed")) === "true");
 
 // Settings sheet.

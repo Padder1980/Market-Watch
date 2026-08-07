@@ -31,9 +31,28 @@ sits permanently greyed out for a pillar it could never have. Flows sits opposit
 not convenience: both answer "what do the professionals think?" — analysts by saying it, allocators
 by moving money.
 
-Flows and Network are **Bitcoin only** so far. Blockchain.com indexes no chain but Bitcoin's, and the
-flow snapshot covers the US spot Bitcoin ETFs, so every other coin shows `n/a` rather than being
-handed Bitcoin's numbers under its own name.
+**Trend and Risk work for any coin** you add — thousands of them, whatever CoinGecko lists. **Flows
+now covers Bitcoin and Ethereum**, the two coins with a real US spot ETF. **Network is Bitcoin
+only** and stays that way: Ethereum has had no hash rate to measure since it stopped mining in 2022,
+and no free source publishes a working substitute (Etherscan's own historical activity data is
+locked behind a paid plan) — this is a wall, not a queue. Every other coin shows `n/a` for both
+rather than being handed another coin's numbers under its own name.
+
+## Discover — coins you didn't think to add
+
+A third tab, alongside Ratings and My holdings. Once a night, a robot on GitHub scores a wide,
+**market-cap-ranked** set of coins with the exact same arithmetic your own watchlist gets, and shows
+you whichever of them you haven't already added.
+
+**This is not a "what's pumping" list.** It is ranked by the same composite score and star rating as
+everything else here — never by raw price change, which is the single easiest way to walk someone
+into buying a top. A coin earns a badge for *"evidence changed"* only when its underlying score moved
+meaningfully since yesterday; a coin new to the top ranks is labelled *new*, not handed a fabricated
+jump from nowhere. Well-known stablecoins are left out — not a judgement on them, just that a coin
+whose entire design is to not move has nothing for a trend engine to say.
+
+Nothing here is a recommendation. It is the same "show your working" screen, applied to coins you
+never thought to look at.
 
 ### Where the flow numbers come from — "the paper round"
 
@@ -147,8 +166,8 @@ To put it on your phone: serve the folder over HTTP and add it to the Home Scree
 ```bash
 node build.ts                  # rebuild first — every check below reads the BUILT page
 npx tsc --noEmit               # typecheck
-node --test "test/*.test.ts"   # 67 engine tests
-node test/app-smoke.mjs        # 33 browser checks against the BUILT page
+node --test "test/*.test.ts"   # 83 engine tests
+node test/app-smoke.mjs        # 37 browser checks against the BUILT page
 ```
 
 Or `npm run check`, which runs all four in that order.
@@ -192,9 +211,16 @@ is the fastest way to get every row rate-limited at once and see a screen that l
 ```
 src/             pure TypeScript, no runtime dependencies, fully unit-tested
   indicators.ts    moving averages, RSI, drawdown, volatility, trend fit
-  score.ts         the four pillars, the composite, the caps
+  score.ts         the pillars, the composite, the caps
   providers.ts     API adapters (browser fetch)
+  flows-parse.ts   pure parsers for the paper round's HTML (no fetch, so they are testable)
+  discover.ts      pure diffing/filtering for the nightly market scan
+  holdings.ts      the transaction book: average-cost pooling, value, gain
   types.ts         shared types
+tools/           NOT shipped to the browser — run with `node tools/x.ts`
+  paper-round.ts     the daily robot: reads free ETF-flow pages, writes data/flows.json
+  discover-round.ts  the nightly market scan: writes data/discover.json
+data/            committed by the two robots above; the page reads these from its own origin
 entry.ts         what gets exposed to the page as the global `MK`
 shell.html       the page: markup, CSS, and the UI code
 build.ts         esbuild bundles the engine and inlines it into shell.html -> index.html

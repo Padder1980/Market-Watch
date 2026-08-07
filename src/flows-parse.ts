@@ -165,6 +165,65 @@ export function checkFlowSanity(daily: [string, number][]): string | null {
 }
 
 /**
+ * The shape `data/flows.json` is committed in. `assets` is keyed by CoinGecko id so more than one
+ * coin's ETF flows can live in one file — added 2026-08-08 when Ethereum joined Bitcoin. Corporate
+ * treasury holdings stay a single top-level field: it is a Bitcoin-only signal (the phenomenon of
+ * public companies holding a coin on the balance sheet barely exists yet for anything else), not a
+ * per-asset one.
+ */
+export interface FlowsFile {
+  assets?: Record<string, {
+    etfDaily?: [string, number][] | null;
+    etfAsOf?: string | null;
+  }>;
+  corpHoldingsBtc?: number | null;
+  corpChangeBtc?: number | null;
+  corpChangeDays?: number | null;
+  fetchedAt?: string | null;
+}
+
+/**
+ * Turn the committed file into one asset's `FlowStats`, or null if that asset has none.
+ *
+ * ⚠️ ONE FUNCTION, TWO CALLERS, BOTH READING BYTES THEY GOT DIFFERENTLY. The browser calls this
+ * after `fetch("./data/flows.json")`; the nightly Discover scan (`tools/discover-round.ts`) calls
+ * it after `readFileSync` on the same committed file from its own checkout — no HTTP round trip
+ * needed when the file is already sitting on the same disk. Parsing "what does this JSON mean for
+ * asset X" is shape logic, not network logic, so it lives here once rather than being written twice
+ * and drifting the way the two would inevitably drift if kept separate.
+ *
+ * Corporate holdings are attached ONLY for `"bitcoin"` — the same restriction the data actually
+ * has, not an arbitrary one added here.
+ */
+export function flowStatsFor(raw: FlowsFile, id: string): {
+  etfDailyUsdM?: number[] | null;
+  etfAsOf?: string | null;
+  corpHoldingsBtc?: number | null;
+  corpChangeBtc?: number | null;
+  corpChangeDays?: number | null;
+  fetchedAt?: string | null;
+} | null {
+  const asset = raw.assets?.[id];
+  const rows = Array.isArray(asset?.etfDaily) ? asset.etfDaily : [];
+  const clean = rows
+    .filter((r) => Array.isArray(r) && typeof r[0] === "string" && Number.isFinite(r[1]))
+    .sort((a, b) => (a[0] < b[0] ? -1 : 1));
+  const last = clean[clean.length - 1];
+
+  const isBitcoin = id === "bitcoin";
+  if (clean.length === 0 && !isBitcoin) return null;
+
+  return {
+    etfDailyUsdM: clean.length > 0 ? clean.map((r) => r[1]) : null,
+    etfAsOf: last ? last[0] : (asset?.etfAsOf ?? null),
+    corpHoldingsBtc: isBitcoin ? (raw.corpHoldingsBtc ?? null) : null,
+    corpChangeBtc: isBitcoin ? (raw.corpChangeBtc ?? null) : null,
+    corpChangeDays: isBitcoin ? (raw.corpChangeDays ?? null) : null,
+    fetchedAt: raw.fetchedAt ?? null,
+  };
+}
+
+/**
  * Diagnostic only — never feeds a score. When `parseTreasuriesTotal` finds nothing in band, this
  * shows what number-like text the page DOES contain near "BTC"/"₿" so a failed run's log explains
  * itself instead of just reporting a byte count. Unbounded by the 600k–3,000k band on purpose: the
