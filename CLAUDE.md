@@ -498,7 +498,7 @@ smuggle the declined recommendation-engine back in wearing a different name. Sor
 `stars * 1000 + composite` — the exact fields `rankRatings`'s default sort already uses.
 
 ⚠️ **THE UNIVERSE IS RANKED BY MARKET CAP, NOT BY ANY OPINION.** `fetchTopByMarketCap` takes
-CoinGecko's `order=market_cap_desc` as-is. Hand-picking which ~25 coins get shown would itself be a
+CoinGecko's `order=market_cap_desc` as-is. Hand-picking which ~20 coins get shown would itself be a
 curatorial, semi-advisory act — "we chose to show you these and not those" is a judgement call by
 another name. Ranking by an objective, external, already-public number sidesteps that entirely.
 
@@ -523,13 +523,13 @@ price move as something more than it is. The threshold is ±5 composite points; 
 noise, not a notice.
 
 ⚠️ **COMPUTED SERVER-SIDE, ONCE A DAY, NOT ON EVERY OPEN.** `tools/discover-round.ts` fetches one
-`coins/markets` call for the market-cap list, then ~25 sequential `market_chart` calls (1.5s apart —
-CoinGecko's own docs explicitly discourage high-frequency KEYLESS polling, and this respects that
-even though it only runs once daily) and writes `data/discover.json` — a compact, PRE-SCORED
+`coins/markets` call for the market-cap list, then ~18 sequential `market_chart` calls (paced and
+retried against a REAL measured rate limit, not a guess — see the next section) and writes
+`data/discover.json` — a compact, PRE-SCORED
 `DiscoverEntry[]`, not raw price history. The client fetches this once per session
 (`state.discoverEntries`, populated lazily when the tab is first opened) and renders it directly; it
 never re-runs `rateAsset` itself for Discover entries, because that already happened server-side.
-Sending 365 days of history for 25 coins just to redraw two percentages the server already knows
+Sending 365 days of history for ~20 coins just to redraw two percentages the server already knows
 would multiply the file size for nothing — `move1`/`move30` are pre-computed too.
 
 ⚠️ **ONE BAD COIN MUST NOT SINK THE WHOLE SCAN, AND THE TOP-LEVEL FAILURE MUST STILL FAIL CLEANLY.**
