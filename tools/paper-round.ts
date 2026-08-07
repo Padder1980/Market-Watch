@@ -11,9 +11,18 @@
 //
 // ⚠️ IT MUST REFUSE TO WRITE RATHER THAN WRITE A GUESS. A scraper's failure mode is a site quietly
 // changing its layout, and the danger is not an error — it is a plausible wrong number inheriting
-// the trust the right one had. Every write goes through `sane()`, a bad parse exits non-zero with a
-// sample of what it actually saw, and the previous file is left untouched. A stale file is then
-// caught downstream by `scoreFlows`'s staleness gate and shown as n/a. Broken looks broken twice.
+// the trust the right one had. Every write goes through `checkFlowSanity()`, a bad parse exits
+// non-zero with a sample of what it actually saw, and the previous file is left untouched. A stale
+// file is then caught downstream by `scoreFlows`'s staleness gate and shown as n/a. Broken looks
+// broken twice.
+//
+// ⚠️ FARSIDE'S "ALL DATA" PAGE RETURNED HTTP 403 ON ITS FIRST REAL RUN (2026-08-07), and it looks
+// like bot-blocking rather than a parser fault — the shorter "current" page on the same domain
+// answered normally. The deliberate response is NOT to spoof a browser identity to get past it: the
+// courteous, identifiable User-Agent below is a design choice (see CLAUDE.md), and evading a site's
+// own blocking after it has said no is the opposite of that. Instead the design already has a
+// fallback for exactly this — `mergeDaily` — so the short page's rows accumulate into real history
+// over days even with the long page permanently unreachable. Slower, but honest.
 //
 // Run:  node tools/paper-round.ts [--dry]
 
@@ -21,7 +30,13 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { mergeDaily, parseFarsideFlows, parseTreasuriesTotal } from "../src/flows-parse.ts";
+import {
+  checkFlowSanity,
+  mergeDaily,
+  parseFarsideFlows,
+  parseTreasuriesTotal,
+  treasuriesDebugSample,
+} from "../src/flows-parse.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const OUT = join(here, "..", "data", "flows.json");
@@ -70,29 +85,6 @@ function readStored(): Stored {
   }
 }
 
-/**
- * ⚠️ THE SANITY GATE, AND IT IS DELIBERATELY SUSPICIOUS OF ITS OWN INPUT.
- *
- * A parser that has quietly started matching the wrong column still returns numbers, and numbers
- * flow straight into a star rating. So the shape is checked before the value is believed: enough
- * rows to be a real table, a plausible newest date, and per-day magnitudes inside a band no real
- * daily net flow has approached (the record single day is around $1.4bn). Each rejection names what
- * it saw, because "the robot stopped working" is only actionable if it says why.
- */
-function saneFlows(daily: [string, number][]): string | null {
-  if (daily.length < 100) return `only ${daily.length} rows parsed — expected hundreds`;
-  const last = daily[daily.length - 1] as [string, number];
-  const ageDays = (Date.now() - Date.parse(`${last[0]}T00:00:00Z`)) / 86_400_000;
-  if (!Number.isFinite(ageDays)) return `newest row has an unparseable date: ${last[0]}`;
-  if (ageDays > 14) return `newest row is ${Math.round(ageDays)} days old (${last[0]})`;
-  if (ageDays < -2) return `newest row is in the future: ${last[0]}`;
-  const worst = Math.max(...daily.map(([, v]) => Math.abs(v)));
-  if (worst > 6000) return `a daily flow of ${worst} US$m is implausible — wrong column?`;
-  const allZero = daily.every(([, v]) => v === 0);
-  if (allZero) return "every row parsed as zero — the value column has probably moved";
-  return null;
-}
-
 async function main(): Promise<void> {
   const stored = readStored();
   const today = new Date().toISOString().slice(0, 10);
@@ -115,7 +107,7 @@ async function main(): Promise<void> {
     // throw away the history the rolling windows self-calibrate against, and the pillar would go
     // quiet for weeks with nothing in the logs to explain it.
     const merged = mergeDaily(etfDaily, parsed.daily);
-    const bad = saneFlows(merged);
+    const bad = checkFlowSanity(merged);
     if (bad) {
       console.log(`  ${url} -> REJECTED: ${bad}`);
       continue;
@@ -140,7 +132,18 @@ async function main(): Promise<void> {
     if (!html) continue;
     const total = parseTreasuriesTotal(html);
     if (total == null) {
+      // ⚠️ NAME WHAT IT SAW, NOT JUST THAT IT FAILED. A byte count alone (measured: 462,806 on
+      // 2026-08-07) says the page loaded but tells nobody what to fix. This logs whatever the page
+      // DOES have near "BTC"/"₿" — in band or not — so a real failure explains itself in the log
+      // instead of needing another blind guess-and-redeploy round.
+      const sample = treasuriesDebugSample(html);
       console.log(`  ${url} -> no plausible total found (${html.length} bytes)`);
+      console.log(
+        sample.length > 0
+          ? `    nearby figures seen: ${sample.join(", ")}`
+          : `    no "<number> BTC"-shaped text found at all — the total may be rendered by ` +
+              `client-side JS, which a server-side fetch never runs`,
+      );
       continue;
     }
     corpHoldings = total;

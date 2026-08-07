@@ -9,11 +9,13 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  checkFlowSanity,
   mergeDaily,
   parseFarsideFlows,
   parseFlowNumber,
   parseTableDate,
   parseTreasuriesTotal,
+  treasuriesDebugSample,
 } from "../src/flows-parse.ts";
 import { FLOWS_STALE_DAYS, scoreFlows } from "../src/score.ts";
 
@@ -175,4 +177,71 @@ test("the flows pillar never presents itself as a price forecast", () => {
   assert.ok(/not a price forecast/i.test(text));
   assert.ok(/near tops before/i.test(text), "the honest caveat about heavy inflows must survive");
   assert.ok(!/will rise|going up|buy now|guaranteed/i.test(text), text);
+});
+
+// ---------------------------------------------------------------------------------------------
+// The sanity gate — fixed 2026-08-07 after its first real run deadlocked on real data
+// ---------------------------------------------------------------------------------------------
+
+test("a small but real day-one scrape is ACCEPTED, not rejected", () => {
+  // ⚠️ THIS IS THE LITERAL REGRESSION. The first version demanded >=100 rows, assuming the "all
+  // data" page would always be reachable. On 2026-08-07 that page returned HTTP 403 (bot-blocking)
+  // and the short "current" page's real 14-row scrape was rejected — which meant NOTHING could ever
+  // be accepted, because a rejection never lets the merge take effect, so day two started from zero
+  // stored history and hit the identical rejection. Forever.
+  const fourteenDays: [string, number][] = [];
+  const today = new Date();
+  for (let i = 0; i < 14; i++) {
+    const d = new Date(today.getTime() - i * 86_400_000).toISOString().slice(0, 10);
+    fourteenDays.push([d, 40 + 10 * Math.sin(i)]);
+  }
+  fourteenDays.sort((a, b) => (a[0] < b[0] ? -1 : 1));
+  const bad = checkFlowSanity(fourteenDays);
+  assert.equal(bad, null, bad ?? "");
+});
+
+test("a near-empty scrape is still rejected — the floor moved, it did not disappear", () => {
+  const today = new Date().toISOString().slice(0, 10);
+  assert.ok(checkFlowSanity([]) != null);
+  assert.ok(checkFlowSanity([[today, 40]]) != null);
+  assert.ok(checkFlowSanity([[today, 40], [today, 41]]) != null);
+});
+
+test("the gate still catches a stale, implausible or all-zero table", () => {
+  const days = (n: number, v: (i: number) => number): [string, number][] => {
+    const out: [string, number][] = [];
+    for (let i = 0; i < n; i++) {
+      const d = new Date(Date.now() - i * 86_400_000).toISOString().slice(0, 10);
+      out.push([d, v(i)]);
+    }
+    return out.sort((a, b) => (a[0] < b[0] ? -1 : 1));
+  };
+  const stale = days(10, () => 10).map(([, v], i, arr) =>
+    [new Date(Date.now() - (i + 30) * 86_400_000).toISOString().slice(0, 10), v] as [string, number]
+  );
+  assert.ok(checkFlowSanity(stale) != null, "a 30-day-old newest row must be rejected");
+  const wildColumn = days(10, () => 999_999);
+  assert.ok(checkFlowSanity(wildColumn) != null, "an implausible magnitude must be rejected");
+  const allZero = days(10, () => 0);
+  assert.ok(checkFlowSanity(allZero) != null, "an all-zero table must be rejected");
+});
+
+// ---------------------------------------------------------------------------------------------
+// Treasuries diagnostics — turns a bare byte count into something actionable
+// ---------------------------------------------------------------------------------------------
+
+test("the treasuries debug sample shows what IS there, even out of band", () => {
+  // A figure that exists but sits outside the accepted 600k-3,000k band (a single company's
+  // holding, not the grand total) must still show up in the diagnostic sample — the whole point is
+  // to see what the page has, not to repeat the same strict filter that already found nothing usable.
+  const page = "<p>MicroStrategy holds 640,031 BTC.</p><p>A single fund owns 12,000 BTC.</p>";
+  const sample = treasuriesDebugSample(page);
+  assert.ok(sample.some((s) => s.includes("640,031")), sample.join(" | "));
+  assert.ok(sample.some((s) => s.includes("12,000")), sample.join(" | "));
+});
+
+test("the treasuries debug sample is empty when the page has nothing BTC-shaped at all", () => {
+  // This is the signal that the number is likely rendered by client-side JS rather than present in
+  // the fetched HTML — a different problem from a formatting mismatch, and the log should say so.
+  assert.deepEqual(treasuriesDebugSample("<p>Loading holdings…</p>"), []);
 });
