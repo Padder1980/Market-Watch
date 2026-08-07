@@ -212,9 +212,34 @@ would make every local copy phone home AND reintroduce the cross-origin problem 
 to avoid.
 
 ⚠️ **THE ROBOT MUST REFUSE TO WRITE RATHER THAN WRITE A GUESS.** A scraper's failure mode is not an
-error, it is a plausible wrong number inheriting the trust the right one had. Hence `saneFlows()`:
+error, it is a plausible wrong number inheriting the trust the right one had. Hence
+`checkFlowSanity()` (in `src/flows-parse.ts`, moved there 2026-08-07 so it is finally unit-tested):
 row count, newest-date age, and a magnitude band no real daily net flow has approached. A rejection
 names what it saw and exits non-zero so the Action goes red; the previous file is left untouched.
+
+⚠️ **THE GATE'S OWN FIRST VERSION COULD NEVER BE SATISFIED, AND IT TOOK FIVE STUCK RUNS PLUS TWO REAL
+ONES TO FIND OUT.** It demanded ≥100 rows in the merged total, on the assumption the "all data" page
+would always supply hundreds in one request. On 2026-08-07 that page started returning **HTTP 403**
+(bot-blocking — the shorter "current" page on the same domain answered fine, so it is not a parser
+fault). Every run then fell back to the short table's real ~14–15 rows — and because a REJECTION
+never lets `mergeDaily` take effect, day one's rows were rejected, day two started from zero stored
+history and hit the identical rejection. Forever. The floor is now 5 rows: enough to know a real
+table was parsed, not a demand that a decade of history arrive in one request.
+
+⚠️ **DELIBERATELY NOT SPOOFING A BROWSER TO GET PAST THE 403.** The identifiable, courteous
+User-Agent below is a stated design choice; evading a site's own bot-blocking after it has said no
+is the opposite of that. The merge-based accumulation from the short page is the honest fallback,
+and fixing the gate above is what makes it actually work.
+
+⚠️ **THE COMMIT STEP HAD ITS OWN BUG, INVISIBLE UNTIL THE PARSER FINALLY SUCCEEDED.**
+`git diff --quiet -- data/flows.json` is blind to a file git has never tracked — untracked files
+are outside plain `git diff` entirely, so a BRAND NEW file reads as "no difference" and the step
+exits without committing. The first fully-successful run (2026-08-07, 15 real flow rows, exit 0,
+"Wrote ... (15 flow rows...)") still logged "No change to data/flows.json" and pushed nothing,
+because `data/flows.json` did not exist in the repo yet. Fixed by `git add` BEFORE the check, then
+`git diff --cached --quiet` — staging makes a new file visible to the diff. A guard that only proves
+itself on a MODIFIED file, never on a file's first appearance, is not proven at all; this bug could
+not have been caught by re-running against the same already-existing fixture-committed file.
 
 ⚠️ **AND THE APP MUST NOT TRUST A STALE FILE EITHER.** `FLOWS_STALE_DAYS` (7) makes `scoreFlows`
 refuse data older than a week. Without it, June's inflow keeps earning August's stars for as long as
@@ -236,12 +261,17 @@ positive, a day of heavy selling becomes a day of heavy buying. `parseTreasuries
 deliberately strict and allowed to fail (600k–3,000k BTC band) — loosening it to "first big number
 on the page" is how a market cap becomes a holdings figure with nobody noticing.
 
-⚠️ **THE PARSERS HAVE NEVER SEEN THE REAL PAGES.** They were written and tested against fixture HTML
-because this sandbox's proxy blocks those hosts (403 on every one, same as CoinGecko and
-mempool.space — nothing to do with the sites). **The first real Action run is the actual test.** If
-it goes red with "table not recognised", that is the design working: read the logged byte count and
-sample, fix the parser against what the page really says, do not loosen the sanity gate to make it
-pass.
+⚠️ **THE ETF PARSER NOW WORKS AGAINST THE REAL PAGE (verified 2026-08-07). THE TREASURIES ONE
+DOESN'T, AND HERE IS WHAT IS ACTUALLY KNOWN, NOT GUESSED.** `treasuriesDebugSample` — added
+specifically so a failure explains itself instead of needing another blind guess-and-redeploy round
+— found **zero** "`<number> BTC`"-shaped text anywhere in bitbo.io/treasuries/'s 462,808 bytes. That
+is a different failure from a formatting mismatch (which would show candidates, just out of band or
+oddly punctuated): it means the total is most likely rendered by client-side JavaScript that a plain
+server-side `fetch()` never executes, so the number the browser shows you was never in the HTML this
+robot receives. **Do not "fix" this by loosening the regex** — there is nothing of the right shape
+on the page to loosen the regex onto. If this is ever revisited, it needs either a different source
+that serves the figure as static HTML, or a headless-browser fetch (a materially bigger dependency
+than this project has taken on anywhere else). Left as `n/a`, honestly, rather than guessed at.
 
 ⚠️ **BE A GOOD CITIZEN.** These are free publishers doing us a favour. One request a day, an
 identifying User-Agent naming the repo, and if any of them object the paid API is the proper route.
