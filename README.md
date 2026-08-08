@@ -54,6 +54,28 @@ whose entire design is to not move has nothing for a trend engine to say.
 Nothing here is a recommendation. It is the same "show your working" screen, applied to coins you
 never thought to look at.
 
+### Shares, too
+
+Discover has a **Crypto / Shares** toggle. Shares get the same treatment — the same arithmetic, the
+same evidence-only rule — but the underlying list is different, and it's worth being honest about the
+difference: crypto's list comes from a live, third-party, objective ranking by market size; there's no
+free equivalent for ranking every US-listed company that way, so the share list is a hand-picked set
+of around 50 well-known large companies across sectors instead. The app says this on screen, in the
+line above the list, rather than pretending both lists were built the same way.
+
+⚠️ **Setup needed before this one works.** Unlike crypto Discover (which needs no key at all), the
+nightly share scan needs two free API keys — the same Twelve Data and Finnhub keys used for tracking
+individual shares — but as **GitHub Actions secrets**, not in the app itself, since the scan runs on
+GitHub's servers overnight:
+
+1. Get a free key from [twelvedata.com](https://twelvedata.com) and one from [finnhub.io](https://finnhub.io).
+2. In the repo: **Settings → Secrets and variables → Actions → New repository secret**.
+3. Add `TWELVE_DATA_KEY` (required) and `FINNHUB_KEY` (optional — without it, shares still get
+   scored on Trend and Risk, just not Forecasts or Business).
+
+Until that's done, the Shares tab shows its normal "hasn't run yet" message — nothing breaks, it just
+has nothing to show.
+
 ### Where the flow numbers come from — "the paper round"
 
 Farside publishes the daily ETF flow table free, and the treasuries pages publish holdings free.
@@ -182,7 +204,7 @@ To put it on your phone: serve the folder over HTTP and add it to the Home Scree
 node build.ts                  # rebuild first — every check below reads the BUILT page
 npx tsc --noEmit               # typecheck
 node --test "test/*.test.ts"   # 83 engine tests
-node test/app-smoke.mjs        # 48 browser checks against the BUILT page
+node test/app-smoke.mjs        # 53 browser checks against the BUILT page
 ```
 
 Or `npm run check`, which runs all four in that order.

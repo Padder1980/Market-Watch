@@ -1,0 +1,57 @@
+name: Discover round (shares)
+
+# Scans a curated set of large, well-known US companies once a day and commits
+# data/discover-shares.json — the equity counterpart to the crypto Discover round. Runs the SAME
+# rateAsset() the app uses for the owner's own watchlist. See tools/discover-round-shares.ts for why
+# this universe is curated rather than ranked, and why that is stated plainly rather than hidden.
+#
+# ⚠️ NEEDS TWO REPOSITORY SECRETS TO RUN AT ALL: TWELVE_DATA_KEY (required — free at
+# twelvedata.com) and FINNHUB_KEY (optional — free at finnhub.io, fills in analyst/business data).
+# Add them at Settings -> Secrets and variables -> Actions -> New repository secret. Without
+# TWELVE_DATA_KEY the script logs why and exits 1 rather than failing 52 times confusingly.
+
+on:
+  schedule:
+    # 23:00 UTC — safely after US market close (21:00 UTC in daylight saving, 22:00 UTC in standard
+    # time) year-round, and after both crypto workflows (paper round 21:40, crypto Discover 22:15).
+    - cron: "0 23 * * 1-5"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# Same reasoning as the crypto Discover round: a stuck or rate-limited run must never block the next
+# scheduled one, and this workflow's own trouble must never be able to touch the other two files.
+concurrency:
+  group: discover-shares
+  cancel-in-progress: true
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Scan the shares and score them
+        env:
+          TWELVE_DATA_KEY: ${{ secrets.TWELVE_DATA_KEY }}
+          FINNHUB_KEY: ${{ secrets.FINNHUB_KEY }}
+        run: node tools/discover-round-shares.ts
+
+      - name: Commit if anything changed
+        run: |
+          # ⚠️ Stage before diffing — see paper-round.yml's identical comment. A file `git` has never
+          # tracked is invisible to `git diff` until it is staged.
+          git add data/discover-shares.json
+          if git diff --cached --quiet; then
+            echo "No change to data/discover-shares.json"
+            exit 0
+          fi
+          git config user.name "market-watch-bot"
+          git config user.email "market-watch-bot@users.noreply.github.com"
+          git commit -m "Discover round (shares): market scan $(date -u +%Y-%m-%d)"
+          git push

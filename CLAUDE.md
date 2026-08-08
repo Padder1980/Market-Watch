@@ -41,10 +41,14 @@ src/             pure TypeScript engine, no runtime dependencies, fully unit-tes
   holdings.ts      the transaction book: average-cost pooling, value, gain
   types.ts         shared types
 tools/           NOT shipped to the browser, run directly via `node tools/x.ts`
-  paper-round.ts     the daily robot: reads free pages server-side, writes data/flows.json
-  discover-round.ts  the nightly market-cap scan: writes data/discover.json
-data/flows.json     committed by the paper round; the page fetches it from its own origin
-data/discover.json  committed by the discover round; same relative-URL pattern
+  paper-round.ts          the daily robot: reads free pages server-side, writes data/flows.json
+  discover-round.ts       the nightly market-cap scan (crypto): writes data/discover.json
+  discover-round-shares.ts  the nightly curated-list scan (shares): writes data/discover-shares.json
+data/flows.json          committed by the paper round; the page fetches it from its own origin
+data/discover.json       committed by the crypto discover round; same relative-URL pattern
+data/discover-shares.json  committed by the shares discover round; same pattern, needs its own
+  TWELVE_DATA_KEY/FINNHUB_KEY GitHub Actions secrets to run at all — see the Discover-for-shares
+  section below
 entry.ts         the engine's public surface, bundled to the browser global `MK`
 shell.html       the page: markup, CSS, and all the UI code
 build.ts         esbuild bundles `entry.ts` and inlines it into shell.html -> index.html
@@ -66,7 +70,7 @@ npm ci                         # once
 node build.ts                  # rebuild index.html — run after ANY edit to src/, entry.ts or shell.html
 npx tsc --noEmit               # typecheck (must be clean — covers tools/ too, not just the browser bundle)
 node --test "test/*.test.ts"   # 83 engine tests
-node test/app-smoke.mjs        # 48 browser checks against the BUILT page
+node test/app-smoke.mjs        # 53 browser checks against the BUILT page
 node tools/paper-round.ts --dry     # the daily flows robot, without writing anything
 node tools/discover-round.ts --dry  # the nightly market scan, without writing anything
 npm run check                  # build + typecheck + tests + smoke, in that order
@@ -563,6 +567,66 @@ assigning it in the constructor body — plain enough for both toolchains. **Any
 script that imports from `src/` should be treated as a second consumer with its own constraints**,
 not assumed to inherit whatever the browser bundle already tolerates.
 
+## Discover for shares (2026-08-08) — the same idea, a genuinely different honesty problem
+
+He asked for "another section... my companion for stocks and shares" that could "use a rich data set
+to provide sound advice." Declined the same way crypto's equivalent ask was declined earlier the
+same day — see `AskUserQuestion`'s answer, which he picked: extend Discover to shares, not build a
+verdict engine. **This is not a new tab.** The existing Discover tab grew a Crypto/Shares toggle
+(`#discTabs`, mirroring Education's inner Guide/Glossary tabs), because the whole point was already
+"widen what gets scored the same honest way," which needed a second data source and a UI toggle, not
+a second concept.
+
+⚠️ **THE SHARE UNIVERSE IS CURATED, NOT RANKED, AND THAT DIFFERENCE MUST STAY VISIBLE ON SCREEN.**
+Crypto Discover's candidates come from CoinGecko's live, third-party, objective market-cap ordering —
+nobody at this project chose which coins appear. There is no free, keyless equivalent for ranking
+~10,000 US-listed companies: both Twelve Data's and Finnhub's free tiers charge one API call per
+symbol just to read a market cap, so ranking the whole market would burn a day's quota before scoring
+a single company. `SHARE_UNIVERSE` in `tools/discover-round-shares.ts` is therefore a hand-picked
+list of ~52 large, broadly recognisable companies across sectors — a genuinely curatorial choice,
+the exact kind of judgement call crypto Discover's own design note warns against making silently.
+Accepted as the honest trade-off for a free source existing at all, on condition that the app never
+describes it as size-ranked. `renderDiscover()` in `shell.html` prints a DIFFERENT methodology line
+per kind ("ranked by market size" vs "a curated list of well-known large companies, not ranked by
+size") — asserted by a smoke test specifically checking the share line does NOT contain the crypto
+one's wording, because the two claims are easy to accidentally merge in a future copy edit.
+
+⚠️ **A SEPARATE SCRIPT, WORKFLOW AND DATA FILE FROM CRYPTO DISCOVER — same reasoning as keeping the
+paper round and crypto Discover apart, applied a third time.** `tools/discover-round-shares.ts` +
+`.github/workflows/discover-shares.yml` write `data/discover-shares.json`. A Twelve Data outage or a
+missing key must never be able to block the crypto scan's commit, and the reverse.
+
+⚠️ **THIS ROBOT CANNOT RUN WITHOUT THE OWNER'S OWN KEYS, AND THAT IS A REAL SETUP STEP HE HAS TO DO
+HIMSELF — NOT SOMETHING THIS SESSION COULD DO FOR HIM.** Twelve Data (price history, required) and
+Finnhub (analyst/business data, optional — the scan still runs without it, same degrade-gracefully
+rule `loadWatchlist` already follows in the browser) both need a free personal key, and a server-side
+robot has nowhere to keep one except a GitHub Actions repository secret
+(`TWELVE_DATA_KEY`, `FINNHUB_KEY` — Settings → Secrets and variables → Actions on the repo). There is
+no tool available to this session that can set an encrypted repo secret, and pasting a live key into
+chat would defeat the point of keeping it a secret anyway — so the workflow is built to **fail
+loudly and specifically** when `TWELVE_DATA_KEY` is absent (one clear line naming exactly what to add
+and where, then exit 1) rather than crash 52 times confusingly. Until he adds it, `data/discover-shares.json`
+simply never gets written, and the Shares tab shows its normal "hasn't run yet" empty state — the
+same honest silence the crypto side shows before its first-ever run.
+
+⚠️ **THE RATE-BUDGET MATH IS WRITTEN DOWN, NOT ASSUMED.** 52 companies at the SAME 8000ms gap
+`loadWatchlist` already uses for Twelve Data's real 8-req/min free-tier limit (not a new guess — the
+one figure this app has already proven safe) costs ~7 minutes of pacing and 52 Twelve Data calls —
+comfortably inside its ~800/day cap even if the owner's own browser reuses the same key that day —
+and up to ~150 Finnhub calls spread across that same 7 minutes, comfortably inside Finnhub's 60/min
+free tier without needing its own separate pacing. `MIN_SUCCESSFUL_FRACTION` (0.5) is a stated
+STARTING point, not a calibrated constant — unlike crypto Discover's retry/backoff numbers, which
+were measured against one real failed run, there is no real run of this script yet to calibrate
+against (it cannot run at all until the keys exist). Revisit it once a real log exists, the same way
+the crypto side's constants were, rather than assuming 0.5 is right forever.
+
+⚠️ **`AssetSnapshot`/`DiscoverEntry`/`diffAgainstPrevious` NEEDED NO CHANGES AT ALL.** Every type in
+`src/types.ts` and every function in `src/discover.ts` was already generic across `AssetKind` — proof
+that keeping Discover's engine plumbing kind-agnostic the first time round (rather than hardcoding
+"coin" into field names or logic) was the right call. The only genuinely new code is the fetch loop
+(reusing `fetchEquityHistory`/`fetchConsensus`/`fetchFundamentals`, already written for the browser
+watchlist) and the UI toggle.
+
 ## Education — a plain-English guide and glossary (2026-08-08)
 
 He asked for a fourth tab, by name, after being told this is not a recommendation engine — the
@@ -675,7 +739,7 @@ be phrased as a recommendation to buy or sell.
 ## Current status
 
 Standing on its own since the move from Inte-Run (2026-08-06). Build clean, `tsc --noEmit` clean,
-**83 engine tests** passing, **48 browser smoke checks** passing.
+**83 engine tests** passing, **53 browser smoke checks** passing.
 
 **The paper round has now run against the real pages and it works.** First real success 2026-08-07:
 a genuine 15-row Bitcoin ETF flow scrape committed to `data/flows.json`, verified against the actual
@@ -713,5 +777,14 @@ with 192/512/maskable sizes, and a favicon. Getting the source file into the rep
 routes (a pasted chat image with no exportable file; a Google Drive link blocked outright by this
 sandbox's egress policy) before landing on the one that works: committed into the repo via GitHub's
 own upload UI, then `git pull`. +1 smoke check (48 total) proving the `<head>` links survive a build.
+
+**Discover for shares shipped 2026-08-08** — the same Discover tab, extended with a Crypto/Shares
+toggle. Shares are a curated list of ~52 well-known large companies (no free market-cap ranking
+exists for them, unlike crypto's CoinGecko feed), and the UI says so explicitly rather than
+implying an objectivity it doesn't have. **Not yet live**: `tools/discover-round-shares.ts` needs
+`TWELVE_DATA_KEY` (required) and `FINNHUB_KEY` (optional) as GitHub Actions repository secrets before
+it can run at all — that's the owner's own setup step, not something buildable from a session without
+his keys. Until he adds them, the Shares tab shows its normal "hasn't run yet" state. +5 smoke checks
+(48 → 53).
 
 Update this section as you go.

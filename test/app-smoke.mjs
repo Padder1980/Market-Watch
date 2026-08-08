@@ -106,8 +106,32 @@ await page.addInitScript(() => {
       },
     ],
   };
+  // Equity Discover fixture: a share not on the default (crypto-only) watchlist, so nothing here
+  // gets filtered out — the exclusion behaviour is already proven by the crypto fixture above.
+  function fakeEquityRating(id, symbol, name, stars, composite) {
+    return {
+      id, symbol, name, kind: "equity", stars, composite,
+      trend: fakePillar(composite), analyst: fakePillar(72), fundamentals: fakePillar(65),
+      network: fakePillar(null), flows: fakePillar(null),
+      risk: { band: "moderate", annualisedVol: 0.25, maxDrawdown: 0.08, worstDay: 0.04, reasons: ["fixture risk reason"] },
+      caveats: [], missing: [],
+    };
+  }
+  const discoverSharesJson = {
+    asOf: new Date().toISOString().slice(0, 10),
+    entries: [
+      {
+        id: "AAPL", symbol: "AAPL", name: "Apple", price: 190, currency: "USD",
+        move1: 0.008, move30: 0.03, deltaComposite: null, isNew: true,
+        rating: fakeEquityRating("AAPL", "AAPL", "Apple", 4, 68),
+      },
+    ],
+  };
   window.fetch = async (url) => {
     const u = String(url);
+    if (u.includes("data/discover-shares.json")) {
+      return { ok: true, status: 200, json: async () => discoverSharesJson };
+    }
     if (u.includes("data/discover.json")) {
       return { ok: true, status: 200, json: async () => discoverJson };
     }
@@ -456,6 +480,40 @@ check(
   "a coin new to the scan is labelled new, not given a fabricated delta",
   /new to this list/i.test(discoverText),
   discoverText.slice(0, 300),
+);
+
+// ---- the shares sub-tab ----
+await page.locator("#discTabShares").click();
+const sharesCards = await page.locator("#discover .card").count();
+check("switching to Shares loads the equity scan", sharesCards === 1, `got ${sharesCards}`);
+
+const sharesText = await page.locator("#discover").innerText();
+check("the share entry shows", /Apple/i.test(sharesText), sharesText.slice(0, 200));
+// ⚠️ THIS IS THE ONE THAT MATTERS MOST IN THIS SECTION. Crypto candidates are ranked by a real,
+// live, external market-cap ordering; the share universe is a hand-picked list (see
+// tools/discover-round-shares.ts). Saying "ranked by market size" for both would quietly claim an
+// objectivity the share side does not have — this asserts the methodology note actually differs.
+check(
+  "the share scan admits it is curated, not size-ranked",
+  /curated list of well-known large companies/i.test(sharesText) && !/ranked by market size/i.test(sharesText),
+  sharesText.slice(0, 300),
+);
+
+const sharesBarLabels = await page.locator("#discover .card").first().locator(".bar .lbl").allTextContents();
+check(
+  "a share is shown Forecasts and Business, not Flows and Network",
+  sharesBarLabels.some((t) => /forecasts/i.test(t)) && sharesBarLabels.some((t) => /business/i.test(t)) &&
+    !sharesBarLabels.some((t) => /flows|network/i.test(t)),
+  JSON.stringify(sharesBarLabels),
+);
+
+// Switching back to Crypto must restore its own scan, not the shares one left behind.
+await page.locator("#discTabCrypto").click();
+const backToCrypto = await page.locator("#discover").innerText();
+check(
+  "switching back to Crypto shows the crypto scan again",
+  /Dogecoin/i.test(backToCrypto) && !/Apple/i.test(backToCrypto),
+  backToCrypto.slice(0, 200),
 );
 
 await page.locator("#tabRatings").click();

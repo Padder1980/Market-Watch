@@ -306,11 +306,17 @@ input[type="text"] { font-family: var(--mono); }
   <div id="viewDiscover" hidden>
     <div class="notice">
       <strong>This is not a list of what to buy.</strong>
-      It scans a wide, size-ranked set of coins once a day and scores every one of them with the
-      exact same arithmetic as your own watchlist — nothing here is chosen because it looks like it
-      will go up. A coin appears because its measurable evidence changed enough to be worth a
-      glance, not because the app thinks it is a good idea.
+      Once a day a robot scores a wide set of assets with the exact same arithmetic as your own
+      watchlist — nothing here is chosen because it looks like it will go up. Something appears
+      because its measurable evidence changed enough to be worth a glance, not because the app
+      thinks it is a good idea.
     </div>
+
+    <div class="tabs" id="discTabs" role="tablist">
+      <button class="tab" id="discTabCrypto" role="tab" aria-selected="true" data-disckind="crypto">Crypto</button>
+      <button class="tab" id="discTabShares" role="tab" aria-selected="false" data-disckind="shares">Shares</button>
+    </div>
+
     <div id="discover"></div>
   </div>
 
@@ -343,7 +349,7 @@ input[type="text"] { font-family: var(--mono); }
     </div>
   </div>
 
-  <div class="foot">Build __BUILD__ · data from CoinGecko, Blockchain.com, Twelve Data, Finnhub, and Farside Investors via a daily snapshot · Discover is a nightly market-cap scan, not a recommendation · nothing leaves this device except calls to those APIs</div>
+  <div class="foot">Build __BUILD__ · data from CoinGecko, Blockchain.com, Twelve Data, Finnhub, and Farside Investors via a daily snapshot · Discover is a nightly scan, not a recommendation · nothing leaves this device except calls to those APIs</div>
 </div>
 
 <div class="sheet-ov" id="txOv">
@@ -484,8 +490,9 @@ input[type="text"] { font-family: var(--mono); }
     view: "ratings",
     lots: read(K_LOTS, []),
     editing: null,
-    discoverEntries: null,
-    discoverAsOf: null
+    discoverKind: "crypto",
+    discoverCrypto: null,
+    discoverShares: null
   };
 
   function $(id) { return document.getElementById(id); }
@@ -878,25 +885,36 @@ input[type="text"] { font-family: var(--mono); }
   // -------------------------------------------------------------------------------------------
 
   /**
-   * ⚠️ FETCHED ONCE PER SESSION, NOT ON EVERY TAB SWITCH. `data/discover.json` only changes once a
-   * day (the nightly scan), so re-fetching it every time the tab opens buys nothing and just adds a
-   * network round trip. `state.discoverEntries` stays null until the first genuine fetch and is
-   * reused after that, same as `state.ratings` is not refetched on every render.
+   * Which stored slot + source file a Discover kind reads from. Crypto and shares are two entirely
+   * separate nightly robots (see tools/discover-round.ts and tools/discover-round-shares.ts) writing
+   * two separate files, so nothing about one's schedule or failure can touch the other's.
    */
-  async function loadDiscover() {
-    if (state.discoverEntries) { renderDiscover(); return; }
+  function discoverSourceFor(kind) {
+    return kind === "shares"
+      ? { slot: "discoverShares", url: "./data/discover-shares.json" }
+      : { slot: "discoverCrypto", url: "./data/discover.json" };
+  }
+
+  /**
+   * ⚠️ FETCHED ONCE PER SESSION PER KIND, NOT ON EVERY TAB SWITCH. Each file only changes once a
+   * day (the nightly scan), so re-fetching it every time the tab opens buys nothing and just adds a
+   * network round trip. `state.discoverCrypto`/`state.discoverShares` stay null until their first
+   * genuine fetch and are reused after that, same as `state.ratings` is not refetched on every render.
+   */
+  async function loadDiscover(kind) {
+    var src = discoverSourceFor(kind);
+    if (state[src.slot]) { renderDiscover(); return; }
     var host = $("discover");
     host.innerHTML = '<div class="status"><span class="spin"></span> Loading…</div>';
+    var result = { entries: [], asOf: null };
     try {
-      var res = await fetch("./data/discover.json", { cache: "no-cache" });
+      var res = await fetch(src.url, { cache: "no-cache" });
       if (!res.ok) throw new Error("HTTP " + res.status);
       var data = await res.json();
-      state.discoverEntries = Array.isArray(data.entries) ? data.entries : [];
-      state.discoverAsOf = data.asOf || null;
-    } catch (e) {
-      state.discoverEntries = [];
-      state.discoverAsOf = null;
-    }
+      result.entries = Array.isArray(data.entries) ? data.entries : [];
+      result.asOf = data.asOf || null;
+    } catch (e) { /* leave the empty result — the render below explains it plainly */ }
+    state[src.slot] = result;
     renderDiscover();
   }
 
@@ -963,8 +981,11 @@ input[type="text"] { font-family: var(--mono); }
   }
 
   function renderDiscover() {
+    var kind = state.discoverKind;
     var host = $("discover");
-    var entries = state.discoverEntries || [];
+    var stored = state[discoverSourceFor(kind).slot];
+    var entries = (stored && stored.entries) || [];
+    var noun = kind === "shares" ? "share" : "coin";
 
     if (!entries.length) {
       host.innerHTML = '<div class="empty">Nothing to show yet — the nightly scan has not run, ' +
@@ -972,7 +993,7 @@ input[type="text"] { font-family: var(--mono); }
       return;
     }
 
-    // ⚠️ EXCLUDE WHAT IS ALREADY BEING WATCHED. The whole point is coins the owner has not thought
+    // ⚠️ EXCLUDE WHAT IS ALREADY BEING WATCHED. The whole point is things the owner has not thought
     // to add — repeating their own watchlist back at them here is noise, not discovery. This is a
     // client-side filter against their OWN local watchlist, which the server-side scan cannot know.
     var watchedIds = {};
@@ -980,7 +1001,7 @@ input[type="text"] { font-family: var(--mono); }
     var shown = entries.filter(function (e) { return !watchedIds[e.id]; });
 
     if (!shown.length) {
-      host.innerHTML = '<div class="empty">Every coin in tonight’s scan is already on your ' +
+      host.innerHTML = '<div class="empty">Everything in tonight’s scan is already on your ' +
         "watchlist — nothing new to surface today.</div>";
       return;
     }
@@ -991,14 +1012,31 @@ input[type="text"] { font-family: var(--mono); }
     });
 
     var html = "";
-    if (state.discoverAsOf) {
-      html += '<div class="note" style="margin:0 0 10px">Scanned ' + esc(state.discoverAsOf) +
-        " · " + shown.length + " coin" + (shown.length === 1 ? "" : "s") +
+    // ⚠️ THE METHODOLOGY LINE MUST DIFFER BY KIND, AND MUST NOT OVERSTATE SHARES. Crypto candidates
+    // are ranked by CoinGecko's real, live market-cap ordering; the share universe is a hand-picked
+    // list of well-known companies (see tools/discover-round-shares.ts for why no free, keyless
+    // market-cap ranking of shares exists) — saying "size-ranked" for both would quietly claim an
+    // objectivity the share side does not have.
+    var method = kind === "shares"
+      ? "a curated list of well-known large companies, not ranked by size"
+      : "ranked by market size";
+    if (stored.asOf) {
+      html += '<div class="note" style="margin:0 0 10px">Scanned ' + esc(stored.asOf) +
+        " · " + method + " · " + shown.length + " " + noun + (shown.length === 1 ? "" : "s") +
         " not already on your watchlist</div>";
     }
     shown.forEach(function (e) { html += discoverCardHtml(e); });
     host.innerHTML = html;
   }
+
+  function setDiscoverKind(kind) {
+    state.discoverKind = kind;
+    $("discTabCrypto").setAttribute("aria-selected", String(kind === "crypto"));
+    $("discTabShares").setAttribute("aria-selected", String(kind === "shares"));
+    loadDiscover(kind);
+  }
+  $("discTabCrypto").addEventListener("click", function () { setDiscoverKind("crypto"); });
+  $("discTabShares").addEventListener("click", function () { setDiscoverKind("shares"); });
 
   // -------------------------------------------------------------------------------------------
   // Education — a plain-English guide and glossary, built for someone who finds long passages
@@ -1392,7 +1430,7 @@ input[type="text"] { font-family: var(--mono); }
     $("tabHoldings").setAttribute("aria-selected", String(v === "holdings"));
     $("tabEducation").setAttribute("aria-selected", String(v === "education"));
     if (v === "holdings") renderHoldings();
-    if (v === "discover") loadDiscover();
+    if (v === "discover") loadDiscover(state.discoverKind);
   }
   $("tabRatings").addEventListener("click", function () { setView("ratings"); });
   $("tabDiscover").addEventListener("click", function () { setView("discover"); });
