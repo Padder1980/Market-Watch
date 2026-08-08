@@ -243,6 +243,12 @@ input[type="text"] { font-family: var(--mono); }
 .frm { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 12px 0; }
 .frm label { font-size: 12px; color: var(--ink-faint); display: block; margin-bottom: 4px; }
 .frm .wide { grid-column: 1 / -1; }
+.tx-total-row { display: flex; gap: 8px; }
+.tx-total-row input { flex: 1; min-width: 0; }
+.tx-total-row select { flex: 0 0 auto; width: auto; }
+.tx-total-row select.hide { display: none; }
+#txTotalConv { display: block; margin-top: 4px; }
+#txTotalConv.txconv-warn { color: var(--down); }
 
 /* ---- education ---- */
 .edu-card { display: flex; gap: 14px; align-items: flex-start; }
@@ -369,7 +375,7 @@ input[type="text"] { font-family: var(--mono); }
     </div>
   </div>
 
-  <div class="foot">Build 2026-08-08 06:29 · data from CoinGecko, Blockchain.com, Twelve Data, Finnhub, and Farside Investors via a daily snapshot · Discover is a nightly scan, not a recommendation · nothing leaves this device except calls to those APIs</div>
+  <div class="foot">Build 2026-08-08 06:50 · data from CoinGecko, Blockchain.com, Twelve Data, Finnhub, and Farside Investors via a daily snapshot · Discover is a nightly scan, not a recommendation · nothing leaves this device except calls to those APIs</div>
 </div>
 
 <div class="sheet-ov" id="txOv">
@@ -395,9 +401,13 @@ input[type="text"] { font-family: var(--mono); }
       </div>
       <div class="wide">
         <label for="txTotal">Total invested
-          <span class="note">Optional — fill this and we'll work out the units. Leave it blank if you'd rather type the amount below.</span>
+          <span class="note">Optional — fill this and we'll work out the units, converting currency if you need it. Leave it blank if you'd rather type the amount below.</span>
         </label>
-        <input type="text" inputmode="decimal" id="txTotal" placeholder="500" autocomplete="off">
+        <div class="tx-total-row">
+          <input type="text" inputmode="decimal" id="txTotal" placeholder="500" autocomplete="off">
+          <select id="txTotalCur"></select>
+        </div>
+        <span class="note" id="txTotalConv"></span>
       </div>
       <div>
         <label for="txQty">Amount (units)</label>
@@ -2041,14 +2051,40 @@ var MK = (() => {
   function updateTxCurNote() {
     var id = $("txAsset").value;
     var c = id ? nativeCurrencyFor(id).toUpperCase() : "";
-    $("txCurNote").textContent = c
-      ? "Priced in " + c + ". Enter amounts below in " + c + " — the amount that actually left your account."
-      : "";
+    if (!c) { $("txCurNote").textContent = ""; return; }
+    var disp = state.currency.toUpperCase();
+    $("txCurNote").textContent = c === disp
+      ? "Priced in " + c + "."
+      : "Priced in " + c + ". Price and fee below are in " + c +
+        " — type Total invested in either " + disp + " or " + c + ", whichever you know.";
   }
 
-  /** Rounds a computed unit count to a sane number of places for a text input: whole shares don't
-   * need 8 decimal places, but a crypto fraction does. Mirrors `qtyText`'s precision choice, without
-   * its "—"/zero display special-casing — this feeds an editable field, not a read-only label. */
+  /** The currency options for the "Total invested" field: the account's own display currency (what
+   * most people actually know they spent) first, then the asset's native currency, so a GBP investor
+   * buying a USD share can type the pounds that left their account without converting it themselves
+   * first. When the two are the same currency there's nothing to choose, so only one option renders
+   * and `updateTxTotalCurrencySelect` hides the control entirely rather than show a pointless picker. */
+  function txTotalCurrencyOptions(nativeCur) {
+    var disp = state.currency.toUpperCase();
+    var nat = (nativeCur || disp).toUpperCase();
+    var out = "";
+    if (disp !== nat) out += '<option value="' + esc(disp) + '">' + esc(disp) + "</option>";
+    out += '<option value="' + esc(nat) + '">' + esc(nat) + "</option>";
+    return out;
+  }
+
+  function updateTxTotalCurrencySelect() {
+    var id = $("txAsset").value;
+    var nativeCur = (id ? nativeCurrencyFor(id) : state.currency).toUpperCase();
+    var sel = $("txTotalCur");
+    sel.innerHTML = txTotalCurrencyOptions(nativeCur);
+    sel.classList.toggle("hide", nativeCur === state.currency.toUpperCase());
+  }
+
+  /** Rounds a number to a sane number of places for an editable numeric text input: whole shares
+   * don't need 8 decimal places, but a crypto fraction (or a sub-$1 price) does. Mirrors `qtyText`'s
+   * precision choice, without its "—"/zero display special-casing — this feeds an editable field, not
+   * a read-only label. Used for a computed unit count AND for pre-filling today's price. */
   function roundUnitsForInput(q) {
     var dp = Math.abs(q) >= 1 ? 6 : 8;
     return q.toFixed(dp).replace(/0+$/, "").replace(/\.$/, "");
@@ -2056,15 +2092,34 @@ var MK = (() => {
 
   /** Back-computes units from a typed total, inverting the same formula `updateSpend` uses forward.
    * Only acts while "Total invested" actually holds a value — otherwise a Price/Fee edit made while
-   * using the ordinary units-first flow would overwrite Amount with a stale calculation. */
+   * using the ordinary units-first flow would overwrite Amount with a stale calculation.
+   *
+   * ⚠️ THE TOTAL CAN BE TYPED IN EITHER THE DISPLAY CURRENCY OR THE ASSET'S NATIVE ONE —
+   * `#txTotalCur` says which — and is converted into the native currency BEFORE the units maths runs,
+   * because `unitPrice`/fee are always stored and entered in the asset's native currency (see
+   * `nativeCurrencyFor`). A failed conversion must show a warning and leave Amount untouched, never
+   * silently compute units from an unconverted number — the exact "null, never the raw figure" rule
+   * `convertAmount` itself follows. */
   function unitsFromTotal() {
     var total = num($("txTotal").value);
     var p = num($("txPrice").value);
     var f = num($("txFee").value) || 0;
-    if (!isFinite(total) || !isFinite(p) || p <= 0) return;
+    var convEl = $("txTotalConv");
+    if (!isFinite(total) || !isFinite(p) || p <= 0) { convEl.textContent = ""; convEl.classList.remove("txconv-warn"); return; }
+    var nativeCur = nativeCurrencyFor($("txAsset").value).toUpperCase();
+    var totalCur = ($("txTotalCur").value || nativeCur).toUpperCase();
+    var nativeTotal = totalCur === nativeCur ? total : MK.convertAmount(total, totalCur, nativeCur, state.fx);
+    if (nativeTotal == null) {
+      convEl.textContent = "Couldn't convert to " + nativeCur + " right now — try again once " +
+        "prices refresh, or switch the currency above to " + nativeCur + ".";
+      convEl.classList.add("txconv-warn");
+      return;
+    }
     var side = $("txSide").value;
-    var q = side === "buy" ? (total - f) / p : (total + f) / p;
+    var q = side === "buy" ? (nativeTotal - f) / p : (nativeTotal + f) / p;
     if (isFinite(q) && q > 0) $("txQty").value = roundUnitsForInput(q);
+    convEl.classList.remove("txconv-warn");
+    convEl.textContent = totalCur === nativeCur ? "" : "≈ " + money(nativeTotal, nativeCur) + " at today's rate";
   }
 
   function openTxSheet(editId, presetAssetId) {
@@ -2083,11 +2138,19 @@ var MK = (() => {
     $("txSide").value = lot ? lot.side : "buy";
     $("txDate").value = lot ? lot.dateIso : new Date().toISOString().slice(0, 10);
     $("txQty").value = lot ? String(lot.quantity) : "";
-    $("txPrice").value = lot ? String(lot.unitPrice) : "";
+    // ⚠️ A NEW ENTRY PRE-FILLS TODAY'S OWN PRICE, NOT A PLACEHOLDER. Without a real number here, typing
+    // a "Total invested" has nothing to divide by, so the very feature it exists for — work out the
+    // units for me — silently needs the price looked up and typed in first anyway. Editing an existing
+    // lot always keeps what was actually paid; today's price would misreport a real past purchase.
+    var newPrice = priceFor($("txAsset").value);
+    $("txPrice").value = lot ? String(lot.unitPrice) : (newPrice != null ? roundUnitsForInput(newPrice) : "");
     $("txFee").value = lot && lot.fee ? String(lot.fee) : "";
     // Editing an existing lot always shows its stored units directly — "Total invested" is a
     // shortcut for a NEW entry, not a second source of truth for one already saved.
     $("txTotal").value = "";
+    $("txTotalConv").textContent = "";
+    $("txTotalConv").classList.remove("txconv-warn");
+    updateTxTotalCurrencySelect();
     updateTxCurNote();
     updateSpend();
     $("txOv").classList.add("on");
@@ -2980,6 +3043,9 @@ var MK = (() => {
     unitsFromTotal();
     updateSpend();
   });
+  $("txTotalCur").addEventListener("change", function () {
+    if ($("txTotal").value.trim() !== "") unitsFromTotal();
+  });
   ["txPrice", "txFee"].forEach(function (id) {
     $(id).addEventListener("input", function () {
       if ($("txTotal").value.trim() !== "") unitsFromTotal();
@@ -2991,7 +3057,15 @@ var MK = (() => {
     updateSpend();
   });
   $("txAsset").addEventListener("change", function () {
+    // Only for a NEW entry — state.editing means a real past purchase is being edited, whose actual
+    // paid price must never be silently replaced by today's.
+    if (!state.editing) {
+      var p = priceFor($("txAsset").value);
+      $("txPrice").value = p != null ? roundUnitsForInput(p) : "";
+    }
+    updateTxTotalCurrencySelect();
     updateTxCurNote();
+    if ($("txTotal").value.trim() !== "") unitsFromTotal();
     updateSpend();
   });
   $("closeBtn").addEventListener("click", closeSettings);

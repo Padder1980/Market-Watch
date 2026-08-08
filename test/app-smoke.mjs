@@ -722,8 +722,38 @@ check(
   curNote,
 );
 
-// "Total invested" must back-compute units, inverting the same maths updateSpend uses forward.
+// The "Total invested" currency picker defaults to the account's own display currency (GBP) when it
+// differs from the asset's native one — most people know what left their account in their OWN
+// currency, not the price feed's, which is the entire point this field exists to solve.
+const totalCurDefault = await page.locator("#txTotalCur").inputValue();
+check(
+  "the total-invested currency defaults to the account's own display currency",
+  totalCurDefault === "GBP",
+  `got ${JSON.stringify(totalCurDefault)}`,
+);
+
 await page.locator("#txPrice").fill("100");
+
+// Typing a total IN THE DISPLAY CURRENCY converts before dividing by price: 79 GBP -> 100 USD (the
+// fixture's rate is GBP:0.79) -> 100 / 100 = 1 unit. This is the actual bug report: being able to say
+// how much was spent in GBP and have the app work out the units, converting on its own.
+await page.locator("#txTotal").fill("79");
+const autoQtyGbp = await page.locator("#txQty").inputValue();
+check(
+  "a total typed in the display currency converts before computing units (79 GBP -> 100 USD -> 1 unit)",
+  autoQtyGbp === "1",
+  `got ${JSON.stringify(autoQtyGbp)}`,
+);
+const convNote = await page.locator("#txTotalConv").innerText();
+check(
+  "the converted native-currency amount is shown back to the user for reassurance",
+  /\$?100(\.00)?/.test(convNote) && /today's rate/i.test(convNote),
+  convNote,
+);
+
+// Switching the picker to the native currency (USD) goes back to the original units-first maths with
+// no conversion involved — inverting the same formula `updateSpend` uses forward.
+await page.locator("#txTotalCur").selectOption("USD");
 await page.locator("#txTotal").fill("500");
 const autoQty = await page.locator("#txQty").inputValue();
 check(

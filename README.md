@@ -142,9 +142,14 @@ writing down what you already own.
 - ⚠️ **The gain shown is not a tax figure.** UK capital gains has its own matching rules (Section 104
   pooling plus same-day and 30-day rules), and quietly approximating them would be worse than not
   offering the number at all.
-- **Type how much you invested, and it works out the units** — an optional "Total invested" field on
-  the add-transaction sheet back-calculates the amount for you. Fill it and the units are computed;
-  edit the units directly instead and it steps out of the way.
+- **Type how much you invested, in whichever currency you know it in, and it works out the units.**
+  An optional "Total invested" field on the add-transaction sheet back-calculates the amount for you —
+  and it can be typed in your account's own display currency (say, GBP) even when the asset itself is
+  priced in something else (say, USD): a picker next to the field defaults to your own currency, the
+  app converts it at today's rate before dividing by the price, and shows you the converted figure
+  underneath so you can see the maths that ran. A new entry also starts with today's real price
+  already filled in, so there's nothing to look up first. Edit the units directly instead of typing a
+  total, and it steps out of the way.
 - **Currency is converted properly, not just relabelled.** Buy a US share while your account shows
   GBP, and the value/gain figures are genuinely converted at today's rate (free rates from the
   European Central Bank, via Frankfurter) — never a number silently wearing whatever currency symbol
@@ -231,7 +236,7 @@ To put it on your phone: serve the folder over HTTP and add it to the Home Scree
 node build.ts                  # rebuild first — every check below reads the BUILT page
 npx tsc --noEmit               # typecheck
 node --test "test/*.test.ts"   # 91 engine tests
-node test/app-smoke.mjs        # 74 browser checks against the BUILT page
+node test/app-smoke.mjs        # 77 browser checks against the BUILT page
 ```
 
 Or `npm run check`, which runs all four in that order.

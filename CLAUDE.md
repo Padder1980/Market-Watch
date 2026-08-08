@@ -644,6 +644,56 @@ actual cross-currency round trip through the real UI (add a USD share via Settin
 the transaction sheet, save, and read back a converted £ value with no false "couldn't convert"
 warning), and a check that the transaction history keeps showing the original $ amount, unconverted.
 
+### "Total invested" only ever accepted the ASSET'S currency — the actual bug report (2026-08-08)
+
+The FX work above converts a SAVED holding for display. It did nothing for entering one: "Total
+invested" was still only ever interpreted in the asset's native currency (`nativeCurrencyFor`), and
+`txCurNote` said so in as many words — "Enter amounts below in USD." A GBP investor typing what they
+actually spent on a US share or crypto had no way to do that at all; they'd have had to convert the
+pounds to dollars in their head first, which is the exact task this feature exists to remove. Reported
+directly: *"I want to be able to say how much I invested... I want it to convert dollars to pound etc
+too"* — said again, after the first round shipped, because the first round didn't actually reach this.
+
+⚠️ **`#txTotalCur` LETS THE TOTAL BE TYPED IN EITHER CURRENCY, DEFAULTING TO THE DISPLAY ONE.**
+`txTotalCurrencyOptions` puts the account's own display currency first (most people know what left
+their account in their OWN currency, not the price feed's) and the asset's native currency second;
+when the two are the same there's nothing to pick, so `updateTxTotalCurrencySelect` hides the control
+entirely (`.hide`) rather than show a pointless one-option dropdown.
+
+⚠️ **THE CONVERSION HAPPENS BEFORE THE UNITS MATHS, NEVER AFTER.** `unitPrice`/fee are always stored
+and entered in the asset's native currency (unchanged — see the section above for why: the pooling
+math and the audit trail both need one consistent currency). So `unitsFromTotal` converts whatever was
+typed into that native currency first (`MK.convertAmount(total, totalCur, nativeCur, state.fx)`), THEN
+runs the exact same `(total ∓ fee) / price` inversion it always did. Nothing downstream — `saveTx`,
+`positionForDisplay`, the audit trail — needed to change at all; the conversion is entirely an entry-
+time convenience sitting in front of maths that already worked.
+
+⚠️ **A FAILED CONVERSION SHOWS A WARNING AND LEAVES AMOUNT UNTOUCHED — NEVER A SILENT WRONG NUMBER.**
+Same "null, never the raw figure" rule `convertAmount` itself follows, applied one layer up: if the
+rate table hasn't loaded, `unitsFromTotal` writes "Couldn't convert to USD right now..." into
+`#txTotalConv` and returns without touching `#txQty`. Save's existing validation (`q > 0` required)
+then genuinely blocks the save, rather than have a NaN or zero unit count slip through.
+
+⚠️ **THE CONVERTED FIGURE IS SHOWN BACK, NOT JUST TRUSTED.** `#txTotalConv` prints "≈ $632.91 at
+today's rate" under the field the instant a display-currency total is typed — the same reasoning as
+`updateSpend`'s "Total spent" line: a number the runner cannot see is a number they cannot sanity-
+check, and silent arithmetic they're asked to just trust is how the ORIGINAL relabelling bug (a $121
+share silently becoming "£121") went unnoticed as long as it did.
+
+⚠️ **A NEW ENTRY NOW PRE-FILLS TODAY'S REAL PRICE, NOT A STATIC PLACEHOLDER.** Without this, typing a
+Total had nothing to divide by unless the runner already knew (and typed in) the exact native-currency
+price themselves — which defeats the entire point of a feature built so they don't have to know
+numbers like that. `openTxSheet` and the `txAsset` change handler both call `priceFor(assetId)` and
+fill `#txPrice` with it for a NEW transaction. ⚠️ Gated on `!state.editing` — editing a real past
+purchase must keep showing what was actually paid; silently replacing it with today's price would
+misreport history. The detail screen's "Add to my holdings" button benefits from this for free: the
+price shown on the chart a moment ago is the same one now sitting in the form.
+
++4 smoke checks (74 → 77): the total-currency picker defaults to the display currency, a display-
+currency total converts before computing units (79 GBP → 100 USD → 1 unit against the fixture's
+GBP:0.79 rate), the converted amount is echoed back under the field, and switching the picker back to
+the native currency returns to the original units-first maths with no conversion at all.
+
 ## Discover browsing redesign — tabs, a detail screen, a real chart (2026-08-08)
 
 Requested mid-session against two reference screenshots from a different investment app: a category
@@ -976,7 +1026,7 @@ be phrased as a recommendation to buy or sell.
 ## Current status
 
 Standing on its own since the move from Inte-Run (2026-08-06). Build clean, `tsc --noEmit` clean,
-**91 engine tests** passing, **74 browser smoke checks** passing.
+**91 engine tests** passing, **77 browser smoke checks** passing.
 
 **The paper round has now run against the real pages and it works.** First real success 2026-08-07:
 a genuine 15-row Bitcoin ETF flow scrape committed to `data/flows.json`, verified against the actual
@@ -1052,5 +1102,14 @@ existing transaction sheet, never a buy button — this app has no brokerage con
 NOT offering 1D/1W despite the reference screenshots showing them: both data sources only ever return
 daily closes, and a "1D" button over daily data would imply intraday movement that was never fetched.
 +12 smoke checks (62 → 74). See the section above for the full account.
+
+**"Total invested" now converts currency, not just displays it, shipped 2026-08-08** — a direct
+follow-up report the same session: the first currency-conversion round converted a SAVED holding for
+display, but entering one still only accepted the asset's own native currency, so a GBP investor had
+no way to type what they actually spent without converting it in their head first. `#txTotalCur` lets
+the total be typed in either currency (defaulting to the account's own), converts into native currency
+before the units maths runs, shows the converted figure back for reassurance, and a new transaction
+now pre-fills today's real price instead of a static placeholder so there's something to divide by.
++4 smoke checks (74 → 77). See the section above for the full account.
 
 Update this section as you go.
