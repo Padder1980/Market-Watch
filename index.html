@@ -349,7 +349,7 @@ input[type="text"] { font-family: var(--mono); }
     </div>
   </div>
 
-  <div class="foot">Build 2026-08-08 05:45 · data from CoinGecko, Blockchain.com, Twelve Data, Finnhub, and Farside Investors via a daily snapshot · Discover is a nightly scan, not a recommendation · nothing leaves this device except calls to those APIs</div>
+  <div class="foot">Build 2026-08-08 06:12 · data from CoinGecko, Blockchain.com, Twelve Data, Finnhub, and Farside Investors via a daily snapshot · Discover is a nightly scan, not a recommendation · nothing leaves this device except calls to those APIs</div>
 </div>
 
 <div class="sheet-ov" id="txOv">
@@ -360,6 +360,7 @@ input[type="text"] { font-family: var(--mono); }
       <div class="wide">
         <label for="txAsset">Asset</label>
         <select id="txAsset"></select>
+        <span class="note" id="txCurNote"></span>
       </div>
       <div>
         <label for="txSide">Bought or sold</label>
@@ -371,6 +372,12 @@ input[type="text"] { font-family: var(--mono); }
       <div>
         <label for="txDate">Date</label>
         <input type="date" id="txDate">
+      </div>
+      <div class="wide">
+        <label for="txTotal">Total invested
+          <span class="note">Optional — fill this and we'll work out the units. Leave it blank if you'd rather type the amount below.</span>
+        </label>
+        <input type="text" inputmode="decimal" id="txTotal" placeholder="500" autocomplete="off">
       </div>
       <div>
         <label for="txQty">Amount (units)</label>
@@ -476,10 +483,12 @@ var MK = (() => {
     TARGET_NEUTRAL: () => TARGET_NEUTRAL,
     WEIGHTS: () => WEIGHTS,
     assetsHeld: () => assetsHeld,
+    convertAmount: () => convertAmount,
     fetchBitcoinNetwork: () => fetchBitcoinNetwork,
     fetchCrypto: () => fetchCrypto,
     fetchEquityHistory: () => fetchEquityHistory,
     fetchFlows: () => fetchFlows,
+    fetchFxRates: () => fetchFxRates,
     loadWatchlist: () => loadWatchlist,
     portfolioTotals: () => portfolioTotals,
     positionFor: () => positionFor,
@@ -1178,6 +1187,21 @@ var MK = (() => {
     return [...new Set(lots.map((l) => l.assetId))];
   }
 
+  // src/fx.ts
+  function convertAmount(amount, from, to, rates) {
+    const f = from.toUpperCase();
+    const t = to.toUpperCase();
+    if (f === t) return amount;
+    if (!rates) return null;
+    const base = rates.base.toUpperCase();
+    const fRate = rates.rates[f];
+    const toBase = f === base ? amount : fRate != null ? amount / fRate : NaN;
+    if (!Number.isFinite(toBase)) return null;
+    const tRate = rates.rates[t];
+    const result = t === base ? toBase : tRate != null ? toBase * tRate : NaN;
+    return Number.isFinite(result) ? result : null;
+  }
+
   // src/flows-parse.ts
   function flowStatsFor(raw, id) {
     const asset = raw.assets?.[id];
@@ -1317,6 +1341,19 @@ var MK = (() => {
       if (!res.ok) return null;
       const raw = await res.json();
       return flowStatsFor(raw, id);
+    } catch {
+      return null;
+    }
+  }
+  var FX = "https://api.frankfurter.dev/v1";
+  async function fetchFxRates(base) {
+    try {
+      const data = await getJson(
+        `${FX}/latest?base=${encodeURIComponent(base.toUpperCase())}`,
+        "Frankfurter"
+      );
+      if (!data.rates || typeof data.rates !== "object") return null;
+      return { base: (data.base ?? base).toUpperCase(), rates: data.rates, asOf: data.date ?? "" };
     } catch {
       return null;
     }
@@ -1528,7 +1565,8 @@ var MK = (() => {
     editing: null,
     discoverKind: "crypto",
     discoverCrypto: null,
-    discoverShares: null
+    discoverShares: null,
+    fx: null
   };
 
   function $(id) { return document.getElementById(id); }
@@ -1725,6 +1763,33 @@ var MK = (() => {
     return null;
   }
 
+  /**
+   * The currency a price/quote actually arrived in — USD for a US share, whatever CoinGecko was
+   * asked for (== `state.currency`) for crypto. Falls back to the account's own display currency for
+   * an asset that hasn't loaded a price yet, which is the best guess available and matches this
+   * app's behaviour before currency conversion existed at all.
+   */
+  function nativeCurrencyFor(assetId) {
+    for (var i = 0; i < state.ratings.length; i++) {
+      if (state.ratings[i].snap.id === assetId) return state.ratings[i].snap.currency;
+    }
+    return state.currency.toUpperCase();
+  }
+
+  /**
+   * Converts an amount FROM its native currency INTO the account's display currency.
+   *
+   * ⚠️ RETURNS NULL, NEVER THE UNCONVERTED NUMBER, WHEN CONVERSION ISN'T POSSIBLE. Before this
+   * existed, a price or a typed-in cost was simply relabelled with whatever currency symbol the
+   * display setting happened to be — a $121 Cisco share silently became "£121" with no arithmetic
+   * behind it. Callers must treat null as absent (the same "absent is not bad" rule the rest of this
+   * app already follows for a missing price), never fall back to the raw figure.
+   */
+  function toDisplayCurrency(amount, fromCurrency) {
+    if (amount == null || !isFinite(amount)) return null;
+    return MK.convertAmount(amount, fromCurrency, state.currency, state.fx);
+  }
+
   function labelFor(assetId) {
     for (var i = 0; i < state.watch.length; i++) {
       if (state.watch[i].id === assetId) return state.watch[i].label || state.watch[i].id;
@@ -1748,6 +1813,51 @@ var MK = (() => {
     return q.toFixed(dp).replace(/\.?0+$/, "");
   }
 
+  /**
+   * A position, converted into the account's display currency when its lots aren't already in it.
+   *
+   * ⚠️ THE COMMON CASE NEVER TOUCHES FX AT ALL. Most holdings are bought in one currency that matches
+   * the display setting, so `needsConversion` is false and this is exactly the pre-currency-support
+   * code path — no dependency on a rate table that might not have loaded, for the vast majority of
+   * portfolios.
+   *
+   * ⚠️ ON A FAILED CONVERSION, FALL BACK TO THE ASSET'S OWN NATIVE CURRENCY — NEVER TO A PARTIALLY
+   * CONVERTED MIX. `positionFor`'s average-cost pooling assumes every lot it is given is in ONE
+   * consistent currency; feeding it a lot whose price failed to convert (as, say, a silent 0) would
+   * corrupt the average cost for every other lot in the same pool, not just show one wrong row. So a
+   * failure here means EVERY lot for this asset is computed in its own native currency instead —
+   * self-consistent, just not converted — with `converted: false` telling the caller to exclude it
+   * from the display-currency PORTFOLIO TOTAL rather than silently add mismatched currencies.
+   */
+  function positionForDisplay(assetId) {
+    var mine = state.lots.filter(function (l) { return l.assetId === assetId; });
+    var from = (mine[0] && mine[0].currency) || nativeCurrencyFor(assetId);
+    var needsConversion = from.toUpperCase() !== state.currency.toUpperCase();
+    var nativePrice = priceFor(assetId);
+
+    if (!needsConversion) {
+      return { position: MK.positionFor(mine, assetId, nativePrice), cur: state.currency, converted: true };
+    }
+
+    var ok = true;
+    var normalized = mine.map(function (l) {
+      var lFrom = l.currency || nativeCurrencyFor(assetId);
+      var price = toDisplayCurrency(l.unitPrice, lFrom);
+      var fee = l.fee ? toDisplayCurrency(l.fee, lFrom) : 0;
+      if (price == null || (l.fee && fee == null)) { ok = false; return l; }
+      var copy = {};
+      for (var k in l) copy[k] = l[k];
+      copy.unitPrice = price;
+      copy.fee = fee || 0;
+      return copy;
+    });
+    var convertedPrice = nativePrice != null ? toDisplayCurrency(nativePrice, from) : null;
+    if (!ok || (nativePrice != null && convertedPrice == null)) {
+      return { position: MK.positionFor(mine, assetId, nativePrice), cur: from, converted: false };
+    }
+    return { position: MK.positionFor(normalized, assetId, convertedPrice), cur: state.currency, converted: true };
+  }
+
   function renderHoldings() {
     var host = $("holdings");
     var cur = state.currency;
@@ -1759,10 +1869,19 @@ var MK = (() => {
     }
 
     var ids = MK.assetsHeld(state.lots);
-    var positions = ids.map(function (id) {
-      return MK.positionFor(state.lots, id, priceFor(id));
-    });
-    var totals = MK.portfolioTotals(positions);
+    var results = ids.map(positionForDisplay);
+    var positions = results.map(function (r) { return r.position; });
+    // ⚠️ AN UNCONVERTED POSITION IS EXCLUDED FROM THE TOTAL, THE SAME WAY AN UNPRICED ONE ALREADY IS.
+    // Summing a GBP value with a USD one because conversion failed would silently produce a number in
+    // neither currency — nulling `.value` here routes it through the exact "partial" handling
+    // `portfolioTotals` already has, without duplicating that logic.
+    var totals = MK.portfolioTotals(results.map(function (r) {
+      if (r.converted) return r.position;
+      var copy = {};
+      for (var k in r.position) copy[k] = r.position[k];
+      copy.value = null;
+      return copy;
+    }));
 
     var html = '<div class="hsum">';
     html += '<div class="lbl2">Worth now</div>';
@@ -1785,24 +1904,34 @@ var MK = (() => {
     }
     html += "</div>";
 
-    positions.forEach(function (p) {
+    positions.forEach(function (p, idx) {
       if (p.quantity <= 0 && p.realised === 0) return;
+      // ⚠️ EACH ROW USES ITS OWN CURRENCY, NOT THE GLOBAL DISPLAY ONE. Almost always the same thing
+      // (`r.cur === state.currency`) — it only differs when conversion genuinely failed, in which
+      // case this position is shown honestly in its native currency rather than mislabelled.
+      var r = results[idx];
+      var rc = r.cur;
       html += '<div class="hrow">';
       html += '<div class="nm">' + esc(labelFor(p.assetId)) + "</div>";
-      html += '<div class="val">' + esc(p.value == null ? "—" : money(p.value, cur)) + "</div>";
+      html += '<div class="val">' + esc(p.value == null ? "—" : money(p.value, rc)) + "</div>";
       var sub = p.quantity > 0
-        ? qtyText(p.quantity) + " @ " + money(p.averageCost, cur) + " average"
+        ? qtyText(p.quantity) + " @ " + money(p.averageCost, rc) + " average"
         : "closed";
       html += '<div class="sub2">' + esc(sub) + "</div>";
       if (p.quantity > 0) {
         var pc = p.unrealisedPct == null ? "" : " " + pctText(p.unrealisedPct);
         html += '<div class="chg ' + signClass(p.unrealised) + '">' +
-          esc(signedMoney(p.unrealised, cur) + pc) + "</div>";
+          esc(signedMoney(p.unrealised, rc) + pc) + "</div>";
       } else {
         html += '<div class="chg ' + signClass(p.realised) + '">' +
-          esc(signedMoney(p.realised, cur) + " banked") + "</div>";
+          esc(signedMoney(p.realised, rc) + " banked") + "</div>";
       }
       html += "</div>";
+      if (!r.converted) {
+        html += '<div class="warn">Priced in ' + esc(rc) + " — couldn't convert to " +
+          esc(state.currency.toUpperCase()) + " right now, so this one is shown unconverted. " +
+          "Tap the refresh arrow to try again.</div>";
+      }
       p.warnings.forEach(function (w) {
         html += '<div class="warn">' + esc(w) + "</div>";
       });
@@ -1811,11 +1940,15 @@ var MK = (() => {
     html += '<details class="more"><summary>Every transaction</summary><div class="working">';
     var sorted = state.lots.slice().sort(function (a, b) { return a.dateIso < b.dateIso ? 1 : -1; });
     sorted.forEach(function (l) {
+      // ⚠️ SHOWN IN THE CURRENCY IT WAS ACTUALLY ENTERED IN, NOT CONVERTED. This is the audit trail —
+      // it should read back exactly what was typed at the time, not a today's-rate reconstruction of
+      // it. The summary above is where the converted, display-currency numbers belong.
+      var lc = l.currency || nativeCurrencyFor(l.assetId);
       html += '<div class="txrow">';
       html += '<span class="side ' + esc(l.side) + '">' + (l.side === "buy" ? "Bought" : "Sold") + "</span>";
       html += '<span class="grow">' + esc(qtyText(l.quantity) + " " + labelFor(l.assetId)) +
-        " @ " + esc(money(l.unitPrice, cur)) + '<br><span class="sub2">' + esc(l.dateIso) +
-        (l.fee ? " · fee " + esc(money(l.fee, cur)) : "") + "</span></span>";
+        " @ " + esc(money(l.unitPrice, lc)) + '<br><span class="sub2">' + esc(l.dateIso) +
+        (l.fee ? " · fee " + esc(money(l.fee, lc)) : "") + "</span></span>";
       html += '<button data-edit="' + esc(l.id) + '" aria-label="Edit">Edit</button>';
       html += '<button data-del="' + esc(l.id) + '" aria-label="Remove">✕</button>';
       html += "</div>";
@@ -1855,6 +1988,9 @@ var MK = (() => {
     return isFinite(n) ? n : NaN;
   }
 
+  /** Displayed and stored in the ASSET'S OWN currency, never `state.currency` — this figure is what
+   * was actually paid, and relabelling it with whatever the display setting happens to be is the
+   * exact bug currency support exists to remove. See `nativeCurrencyFor`. */
   function updateSpend() {
     var q = num($("txQty").value);
     var p = num($("txPrice").value);
@@ -1863,9 +1999,39 @@ var MK = (() => {
     if (!isFinite(q) || !isFinite(p) || q <= 0) { el.innerHTML = ""; return; }
     var side = $("txSide").value;
     var total = q * p + (side === "buy" ? f : -f);
+    var cur = nativeCurrencyFor($("txAsset").value);
     el.innerHTML = '<span class="note">' +
-      esc((side === "buy" ? "Total spent: " : "Total received: ") + money(total, state.currency)) +
+      esc((side === "buy" ? "Total spent: " : "Total received: ") + money(total, cur)) +
       "</span>";
+  }
+
+  function updateTxCurNote() {
+    var id = $("txAsset").value;
+    var c = id ? nativeCurrencyFor(id).toUpperCase() : "";
+    $("txCurNote").textContent = c
+      ? "Priced in " + c + ". Enter amounts below in " + c + " — the amount that actually left your account."
+      : "";
+  }
+
+  /** Rounds a computed unit count to a sane number of places for a text input: whole shares don't
+   * need 8 decimal places, but a crypto fraction does. Mirrors `qtyText`'s precision choice, without
+   * its "—"/zero display special-casing — this feeds an editable field, not a read-only label. */
+  function roundUnitsForInput(q) {
+    var dp = Math.abs(q) >= 1 ? 6 : 8;
+    return q.toFixed(dp).replace(/0+$/, "").replace(/\.$/, "");
+  }
+
+  /** Back-computes units from a typed total, inverting the same formula `updateSpend` uses forward.
+   * Only acts while "Total invested" actually holds a value — otherwise a Price/Fee edit made while
+   * using the ordinary units-first flow would overwrite Amount with a stale calculation. */
+  function unitsFromTotal() {
+    var total = num($("txTotal").value);
+    var p = num($("txPrice").value);
+    var f = num($("txFee").value) || 0;
+    if (!isFinite(total) || !isFinite(p) || p <= 0) return;
+    var side = $("txSide").value;
+    var q = side === "buy" ? (total - f) / p : (total + f) / p;
+    if (isFinite(q) && q > 0) $("txQty").value = roundUnitsForInput(q);
   }
 
   function openTxSheet(editId) {
@@ -1883,6 +2049,10 @@ var MK = (() => {
     $("txQty").value = lot ? String(lot.quantity) : "";
     $("txPrice").value = lot ? String(lot.unitPrice) : "";
     $("txFee").value = lot && lot.fee ? String(lot.fee) : "";
+    // Editing an existing lot always shows its stored units directly — "Total invested" is a
+    // shortcut for a NEW entry, not a second source of truth for one already saved.
+    $("txTotal").value = "";
+    updateTxCurNote();
     updateSpend();
     $("txOv").classList.add("on");
   }
@@ -1903,7 +2073,13 @@ var MK = (() => {
       dateIso: date,
       quantity: q,
       unitPrice: p,
-      fee: isFinite(f) ? f : 0
+      fee: isFinite(f) ? f : 0,
+      // ⚠️ RECORDED NOW, NOT LEFT IMPLICIT. Before this, a typed price had no stored currency at
+      // all — it was silently assumed to already be in whatever the display setting happened to be
+      // at read time, which breaks the moment either the asset's own currency or the display
+      // setting differs. Stamping the asset's real native currency at save time is what makes every
+      // later conversion (or refusal to guess one) possible.
+      currency: nativeCurrencyFor($("txAsset").value)
     };
     if (state.editing) {
       state.lots = state.lots.map(function (l) { return l.id === state.editing ? lot : l; });
@@ -2381,6 +2557,11 @@ var MK = (() => {
     try {
       state.ratings = rateAll(cached.snapshots);
       state.failures = cached.failures || [];
+      // ⚠️ RESTORED TOO, NOT JUST FETCHED FRESH. Holdings can render before the first live refresh
+      // of a session ever runs (cold start shows the cache immediately); without a cached rate table
+      // any cross-currency position would show "couldn't convert" for however long that takes,
+      // despite yesterday's rates almost certainly still being close enough to be useful today.
+      state.fx = cached.fx || null;
       setAsOf(cached.ts);
       return true;
     } catch (e) { return false; }
@@ -2394,6 +2575,10 @@ var MK = (() => {
     render();
 
     try {
+      // Fired alongside the watchlist load, not after it — loadWatchlist is deliberately paced at
+      // 8s/share for the free-tier rate limit, so by the time it resolves this single fast request
+      // has long since finished. Never allowed to block or fail the price refresh it rides beside.
+      var fxPromise = MK.fetchFxRates("USD");
       var result = await MK.loadWatchlist(
         state.watch, state.keys, state.currency,
         function (done, total, label) {
@@ -2403,12 +2588,13 @@ var MK = (() => {
       );
       state.ratings = rateAll(result.snapshots);
       state.failures = result.failures;
+      state.fx = await fxPromise.catch(function () { return state.fx; });
       var ts = Date.now();
       setAsOf(ts);
       // ⚠️ Cache the SNAPSHOTS, not the ratings. Re-scoring on load costs nothing and means an
       // engine change takes effect immediately; caching verdicts would leave yesterday's arithmetic
       // on screen with no way to tell it apart from today's.
-      write(K_CACHE, { ts: ts, snapshots: result.snapshots, failures: result.failures });
+      write(K_CACHE, { ts: ts, snapshots: result.snapshots, failures: result.failures, fx: state.fx });
     } catch (err) {
       state.failures = [{ id: "Load", message: err && err.message ? err.message : String(err) }];
     } finally {
@@ -2481,10 +2667,32 @@ var MK = (() => {
     state.editing = null;
     $("txOv").classList.remove("on");
   });
-  ["txQty", "txPrice", "txFee"].forEach(function (id) {
-    $(id).addEventListener("input", updateSpend);
+  // ⚠️ EDITING AMOUNT DIRECTLY CLEARS "TOTAL INVESTED" — that is what makes the two inputs behave
+  // as one coherent field instead of fighting each other. `unitsFromTotal` only ever WRITES to
+  // `#txQty` programmatically (`.value = `, never a simulated keystroke), so it can never trigger
+  // this listener itself — only a genuine typed edit does.
+  $("txQty").addEventListener("input", function () {
+    $("txTotal").value = "";
+    updateSpend();
   });
-  $("txSide").addEventListener("change", updateSpend);
+  $("txTotal").addEventListener("input", function () {
+    unitsFromTotal();
+    updateSpend();
+  });
+  ["txPrice", "txFee"].forEach(function (id) {
+    $(id).addEventListener("input", function () {
+      if ($("txTotal").value.trim() !== "") unitsFromTotal();
+      updateSpend();
+    });
+  });
+  $("txSide").addEventListener("change", function () {
+    if ($("txTotal").value.trim() !== "") unitsFromTotal();
+    updateSpend();
+  });
+  $("txAsset").addEventListener("change", function () {
+    updateTxCurNote();
+    updateSpend();
+  });
   $("closeBtn").addEventListener("click", closeSettings);
   $("setOv").addEventListener("click", function (e) {
     if (e.target === $("setOv")) closeSettings();

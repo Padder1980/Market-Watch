@@ -69,8 +69,8 @@ moving the markup into a template literal in `build.ts`.**
 npm ci                         # once
 node build.ts                  # rebuild index.html — run after ANY edit to src/, entry.ts or shell.html
 npx tsc --noEmit               # typecheck (must be clean — covers tools/ too, not just the browser bundle)
-node --test "test/*.test.ts"   # 83 engine tests
-node test/app-smoke.mjs        # 56 browser checks against the BUILT page
+node --test "test/*.test.ts"   # 91 engine tests
+node test/app-smoke.mjs        # 62 browser checks against the BUILT page
 node tools/paper-round.ts --dry     # the daily flows robot, without writing anything
 node tools/discover-round.ts --dry  # the nightly market scan, without writing anything
 npm run check                  # build + typecheck + tests + smoke, in that order
@@ -567,6 +567,83 @@ assigning it in the constructor body — plain enough for both toolchains. **Any
 script that imports from `src/` should be treated as a second consumer with its own constraints**,
 not assumed to inherit whatever the browser bundle already tolerates.
 
+## Currency conversion, and "type what I spent" (2026-08-08)
+
+He asked for two things in holdings: type how much he invested and have units worked out
+automatically, and have cross-currency positions (a USD share, GBP display) convert properly rather
+than just relabelling. The FX design question — today's rate for everything, or the historical rate
+on each transaction's own date — was put to him explicitly; he picked today's rate for both value
+and cost, which is what made this buildable without a per-transaction historical-rate lookup.
+
+⚠️ **`src/holdings.ts` WAS NOT TOUCHED, AND THAT WAS THE POINT.** Its average-cost pooling is
+well-tested, load-bearing financial logic with no reason to know currency exists at all, as long as
+every number handed to it already arrives in one consistent currency. `src/fx.ts` (new, pure,
+8 tests) is what makes that true — `convertAmount(amount, from, to, rates)` normalises lots and the
+current price into the display currency BEFORE they ever reach `positionFor`, in a thin adapter layer
+in `shell.html`. `positionFor`'s signature, and every one of its existing tests, is unchanged.
+
+⚠️ **SAME-CURRENCY IS ALWAYS AN EXACT NO-OP, CHECKED BEFORE THE RATE TABLE IS EVEN LOOKED AT.** Most
+portfolios never cross a currency boundary — a GBP holding on a GBP account works identically whether
+or not Frankfurter loaded, ever. Currency conversion is opt-in by construction, not a new dependency
+laid under the whole feature.
+
+⚠️ **A FAILED CONVERSION RETURNS `null`, NEVER THE UNCONVERTED RAW NUMBER.** This is the entire bug
+being fixed, restated as a rule: before this, a typed price had no stored currency at all, so it was
+silently relabelled with whatever the display setting happened to be — a $121 Cisco share became
+"£121" with zero arithmetic behind it. `convertAmount` refusing to guess is what makes that
+impossible to reintroduce by accident.
+
+⚠️ **A LOT CARRIES ITS OWN `currency` NOW, STAMPED AT SAVE TIME FROM THE ASSET'S ACTUAL NATIVE
+CURRENCY** (`nativeCurrencyFor`, `shell.html`) — never assumed to already match the display setting.
+Old lots saved before this field existed fall back to the asset's CURRENT native currency at read
+time (a live fallback, not a write-migration — cheap enough to just compute wherever `l.currency`
+would be read).
+
+⚠️ **A CONVERSION FAILURE FALLS BACK TO THE ASSET'S OWN NATIVE CURRENCY FOR THAT WHOLE POSITION, NEVER
+TO A PARTIAL MIX.** `positionFor`'s pooling assumes every lot it receives is in ONE consistent
+currency — feeding it a lot whose price failed to convert (as, say, a silent 0) would corrupt the
+average cost for every OTHER lot in that same pool, not just misreport one row. So a failure for any
+lot of an asset means the WHOLE position is computed in its native currency instead (self-consistent,
+just not converted), with a warning, and is EXCLUDED from the display-currency portfolio total —
+nulling `.value` for that one call routes it through the exact "partial" handling `portfolioTotals`
+already has for an unpriced holding, rather than duplicating that logic.
+
+⚠️ **THE TRANSACTION HISTORY IS THE AUDIT TRAIL, AND IT IS DELIBERATELY NEVER CONVERTED.** The summary
+card (Worth now / You paid / gain) shows display-currency, converted numbers — that is what a
+portfolio total is for. "Every transaction" underneath it shows exactly what was typed, in the
+currency it was typed in. Converting the audit trail too would mean it stops matching what the reader
+actually entered, for no benefit — it exists to answer "what did I actually do", not "what would that
+be worth in another currency."
+
+⚠️ **`updateSpend()`'s OWN SUMMARY LINE HAD THE IDENTICAL BUG, ONE LAYER UP, AND IT WAS FIXED THE SAME
+WAY.** It computed "Total spent: X" using `state.currency` (the display setting) to format a number
+that is actually in the asset's native currency — the same relabelling bug, just in the live preview
+rather than in storage. Now uses `nativeCurrencyFor`, consistent with everywhere else.
+
+⚠️ **NO `symbols` PARAMETER ON THE FRANKFURTER CALL.** `fetchFxRates` asks for every currency
+Frankfurter covers, not just the three this app's own currency selector offers — a share can list in
+a currency this app never lets you CHOOSE as your display currency (JPY, CHF, …) while still needing
+to be converted FROM that currency, and enumerating every exchange's currency in advance would be
+guessing at a list that only ever grows. One request, a few KB, covers all of it.
+
+⚠️ **"TOTAL INVESTED" ONLY EVER WRITES TO AMOUNT PROGRAMMATICALLY, NEVER SIMULATES A KEYSTROKE** —
+`$("txQty").value = ...` does not fire an `input` event, so it cannot re-trigger the listener that
+clears "Total invested" on a genuine user edit. That asymmetry is what lets the two fields behave as
+one coherent value instead of fighting each other: type a total, units fill in; then type over the
+units directly, and the total clears itself rather than silently overwriting your edit on the next
+keystroke into Price or Fee.
+
+⚠️ **THE FX RATE TABLE IS CACHED ALONGSIDE THE PRICE SNAPSHOTS, IN THE SAME `K_CACHE` ENTRY** — not
+fetched fresh only. Holdings can render from cache before a session's first live refresh ever
+completes; without a cached table, every cross-currency position would show "couldn't convert" for
+however long that takes, despite yesterday's rates almost certainly still being close enough to be
+useful immediately.
+
+Verified: 91 engine tests (was 83, +8 for `fx.ts`), 62 smoke checks (was 56, +6) — including an
+actual cross-currency round trip through the real UI (add a USD share via Settings, type a total in
+the transaction sheet, save, and read back a converted £ value with no false "couldn't convert"
+warning), and a check that the transaction history keeps showing the original $ amount, unconverted.
+
 ## Two real bugs found the day the shares secrets went live (2026-08-08)
 
 The owner added the `TWELVE_DATA_KEY`/`FINNHUB_KEY` secrets and reported two things in the same
@@ -833,7 +910,7 @@ be phrased as a recommendation to buy or sell.
 ## Current status
 
 Standing on its own since the move from Inte-Run (2026-08-06). Build clean, `tsc --noEmit` clean,
-**83 engine tests** passing, **56 browser smoke checks** passing.
+**91 engine tests** passing, **62 browser smoke checks** passing.
 
 **The paper round has now run against the real pages and it works.** First real success 2026-08-07:
 a genuine 15-row Bitcoin ETF flow scrape committed to `data/flows.json`, verified against the actual
@@ -892,5 +969,17 @@ from genuinely absent data. +3 smoke checks (53 → 56), and two PRE-EXISTING te
 along the way: a shared `localStorage.clear()` was silently defeating every "survives a reload" check
 in the suite, and the older holdings-reload check had a regex that matched its own empty state. Both
 fixed; see the section above for the full account.
+
+**Currency conversion + "type what I spent" shipped 2026-08-08** — a "Total invested" field that
+back-computes units, and real cross-currency conversion for holdings (today's rate, applied
+consistently to both value and cost, per the owner's own choice). New `src/fx.ts` (pure, 8 tests);
+`src/holdings.ts` untouched — conversion happens entirely in a `shell.html` adapter layer before
+anything reaches the pooling engine. +8 engine tests, +6 smoke checks (83→91, 56→62).
+
+**Next up: a Discover browsing redesign**, requested the same session. All / Stocks & shares / Crypto
+top tabs, tap a row for a full detail screen (price, a real chart with 1D/1W/1M/1Y/Max ranges — no
+price chart exists anywhere in this app yet, so that's genuinely new), and an "Add to my holdings"
+button on that screen — a shortcut into the existing record-only holdings flow, explicitly NOT a real
+buy button; this app has no brokerage connection and isn't getting one. Not started as of this note.
 
 Update this section as you go.

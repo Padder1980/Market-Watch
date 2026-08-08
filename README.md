@@ -125,6 +125,16 @@ writing down what you already own.
 - ⚠️ **The gain shown is not a tax figure.** UK capital gains has its own matching rules (Section 104
   pooling plus same-day and 30-day rules), and quietly approximating them would be worse than not
   offering the number at all.
+- **Type how much you invested, and it works out the units** — an optional "Total invested" field on
+  the add-transaction sheet back-calculates the amount for you. Fill it and the units are computed;
+  edit the units directly instead and it steps out of the way.
+- **Currency is converted properly, not just relabelled.** Buy a US share while your account shows
+  GBP, and the value/gain figures are genuinely converted at today's rate (free rates from the
+  European Central Bank, via Frankfurter) — never a number silently wearing whatever currency symbol
+  happens to be selected. The transaction history underneath still shows exactly what you typed, in
+  the currency you typed it in — that's the record of what you actually did; the summary above it is
+  where the converted total lives. If a conversion genuinely can't be done right now, that position is
+  shown honestly in its own currency with a note, rather than guessed at.
 
 ## Education
 
@@ -203,8 +213,8 @@ To put it on your phone: serve the folder over HTTP and add it to the Home Scree
 ```bash
 node build.ts                  # rebuild first — every check below reads the BUILT page
 npx tsc --noEmit               # typecheck
-node --test "test/*.test.ts"   # 83 engine tests
-node test/app-smoke.mjs        # 56 browser checks against the BUILT page
+node --test "test/*.test.ts"   # 91 engine tests
+node test/app-smoke.mjs        # 62 browser checks against the BUILT page
 ```
 
 Or `npm run check`, which runs all four in that order.

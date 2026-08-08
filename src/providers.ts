@@ -19,6 +19,7 @@ import type {
   NetworkStats,
 } from "./types.ts";
 import { flowStatsFor, type FlowsFile } from "./flows-parse.ts";
+import type { FxRates } from "./fx.ts";
 
 export interface Keys {
   /** twelvedata.com — free tier covers daily price history. */
@@ -263,6 +264,40 @@ export async function fetchFlows(id: string): Promise<FlowStats | null> {
     if (!res.ok) return null;
     const raw = (await res.json()) as FlowsFile;
     return flowStatsFor(raw, id);
+  } catch {
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Frankfurter — currency conversion, no key required
+// ---------------------------------------------------------------------------------------------
+
+const FX = "https://api.frankfurter.dev/v1";
+
+/**
+ * Same-day exchange rates against `base`, from the European Central Bank's daily reference rates via
+ * Frankfurter — free, keyless, and CORS-enabled from a browser, the same three properties every other
+ * source in this file was picked for.
+ *
+ * ⚠️ NO `symbols` PARAMETER — the request asks for every currency Frankfurter covers, not just the
+ * three this app's own currency selector offers. A share can list in a currency this app never lets
+ * you CHOOSE as your display currency (e.g. JPY, CHF) while still needing to be CONVERTED FROM that
+ * currency into whichever one you picked, and enumerating every exchange's currency in advance would
+ * be guessing at a list that is only ever going to grow. One request, a few KB, covers all of it.
+ *
+ * ⚠️ NEVER THROWS. Currency conversion is an enrichment on top of a price that already loaded; its
+ * absence must degrade to showing amounts in their own native currency (see `convertAmount`'s own
+ * null-on-missing-table contract), never take down a refresh that would otherwise have worked.
+ */
+export async function fetchFxRates(base: string): Promise<FxRates | null> {
+  try {
+    const data = (await getJson(
+      `${FX}/latest?base=${encodeURIComponent(base.toUpperCase())}`,
+      "Frankfurter",
+    )) as { base?: string; date?: string; rates?: Record<string, number> };
+    if (!data.rates || typeof data.rates !== "object") return null;
+    return { base: (data.base ?? base).toUpperCase(), rates: data.rates, asOf: data.date ?? "" };
   } catch {
     return null;
   }

@@ -127,8 +127,27 @@ await page.addInitScript(() => {
       },
     ],
   };
+  // A month of USD closes for a fake equity, so the currency-conversion tests have a real
+  // cross-currency price to work with — the default watchlist/display currency in this app is GBP.
+  const equityValues = [];
+  let ev = 118.5;
+  for (let i = 0; i < 40; i++) {
+    ev += (i % 5 === 0 ? 1 : -0.3);
+    const d = new Date(Date.now() - (39 - i) * 86400000).toISOString().slice(0, 10);
+    equityValues.push({ datetime: d, close: ev.toFixed(2) });
+  }
+  const fxRates = { amount: 1, base: "USD", date: new Date().toISOString().slice(0, 10), rates: { GBP: 0.79, EUR: 0.92 } };
   window.fetch = async (url) => {
     const u = String(url);
+    if (u.includes("frankfurter")) {
+      return { ok: true, status: 200, json: async () => fxRates };
+    }
+    if (u.includes("twelvedata.com")) {
+      return {
+        ok: true, status: 200,
+        json: async () => ({ status: "ok", meta: { currency: "USD", symbol: "AAPL" }, values: equityValues }),
+      };
+    }
     if (u.includes("data/discover-shares.json")) {
       return { ok: true, status: 200, json: async () => discoverSharesJson };
     }
@@ -597,6 +616,80 @@ check(
   `got ${JSON.stringify(ghKeyAfterSave)}`,
 );
 await page.locator("#closeBtn").click();
+
+// ---------------------------------------------------------------------------------------------
+// Currency conversion and "type what I spent" — a cross-currency share on a GBP-display account
+// ---------------------------------------------------------------------------------------------
+
+await page.locator("#setBtn").click();
+await page.locator("#tdKey").fill("fake-twelve-data-key");
+await page.locator("#addId").fill("AAPL");
+await page.locator("#addKind").selectOption("equity");
+await page.locator("#addBtn").click();
+await page.locator("#saveBtn").click();
+// `refresh()` re-renders the Ratings list; wait for the newly added share to actually appear rather
+// than assuming a fixed delay — this app's default display currency is GBP, and Twelve Data always
+// reports a USD price for this fixture, so AAPL is a genuine cross-currency case from here on.
+await page.locator("#list").getByText("AAPL", { exact: false }).first().waitFor({ timeout: 15000 });
+
+await page.locator("#tabHoldings").click();
+await page.locator("#addTxBtn").click();
+await page.locator("#txAsset").selectOption("AAPL");
+const curNote = await page.locator("#txCurNote").innerText();
+check(
+  "the transaction sheet names the asset's own currency",
+  /USD/.test(curNote),
+  curNote,
+);
+
+// "Total invested" must back-compute units, inverting the same maths updateSpend uses forward.
+await page.locator("#txPrice").fill("100");
+await page.locator("#txTotal").fill("500");
+const autoQty = await page.locator("#txQty").inputValue();
+check(
+  "typing a total works out the units (500 / 100 = 5)",
+  autoQty === "5",
+  `got ${JSON.stringify(autoQty)}`,
+);
+
+// Editing the amount directly must hand control back — typing over the auto-filled units is the
+// "I know the units" flow, and it must not be silently overwritten by a stale total on the next edit.
+await page.locator("#txQty").fill("3");
+const totalAfterManualEdit = await page.locator("#txTotal").inputValue();
+check(
+  "editing the amount directly clears the total, so the two stop fighting each other",
+  totalAfterManualEdit === "",
+  `got ${JSON.stringify(totalAfterManualEdit)}`,
+);
+
+// Put it back to the total-derived entry and save for real.
+await page.locator("#txTotal").fill("500");
+await page.locator("#txDate").fill("2026-08-01");
+await page.locator("#txSave").click();
+
+const heldText = await page.locator("#holdings").innerText();
+check(
+  "a USD holding is valued in the account's own GBP display currency",
+  /£/.test(heldText) && !/\$/.test(heldText),
+  heldText.slice(0, 400),
+);
+check(
+  "conversion actually succeeded — no 'couldn't convert' fallback warning shown",
+  !/couldn't convert/i.test(heldText),
+  heldText.slice(0, 400),
+);
+
+// The audit trail is the one place that must show what was actually typed, in the currency it was
+// typed in — NOT converted, unlike the summary above it.
+await page.locator("#holdings .more summary").click();
+const auditText = await page.locator("#holdings .more").innerText();
+check(
+  "the transaction history shows the original USD price, not a converted one",
+  /\$100(\.00)?/.test(auditText),
+  auditText.slice(0, 300),
+);
+
+await page.locator("#tabRatings").click();
 
 // Dark mode must not leave unreadable text.
 await page.emulateMedia({ colorScheme: "dark" });
