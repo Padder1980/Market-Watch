@@ -158,8 +158,15 @@ await page.addInitScript(() => {
     }
     return { ok: false, status: 404, json: async () => ({}) };
   };
-  // Deterministic starting point: default watchlist, no keys, no cache.
-  localStorage.clear();
+  // ⚠️ NO `localStorage.clear()` HERE, DELIBERATELY — it was here, and it was wrong. `addInitScript`
+  // reruns before EVERY navigation of this page, including every `page.reload()` later in this file,
+  // so a clear() living inside it wiped localStorage on every one of them — silently defeating any
+  // "survives a reload" check in this whole suite. `browser.newPage()` already starts from a fresh,
+  // storage-isolated context, so a clean start never needed this call in the first place; it only
+  // ever mattered on reload, where it was actively harmful. Found because a NEW reload-persistence
+  // check (the watchlist one) failed outright where an OLDER one ("holdings persist across a
+  // reload") had been silently passing on a false positive the whole time — see that check's own
+  // comment for how its regex matched the empty state too.
 });
 
 await page.goto(page_url);
@@ -353,9 +360,14 @@ check("the gain is coloured, not just signed", gainClass > 0);
 await page.reload();
 await page.waitForSelector(".card", { timeout: 15000 });
 await page.locator("#tabHoldings").click();
+// ⚠️ NOT "/Worth now/i" — the EMPTY state's own copy ("...this page will show what it is worth
+// now") matches that regex too, case-insensitively, so the check would report success whether or
+// not anything actually survived the reload. "against what you paid" only ever appears once a real
+// position is being valued (see the "a gain is shown against what was paid" check above), so it
+// can't be satisfied by the empty state by accident.
 check(
   "holdings persist across a reload",
-  /Worth now/i.test(await page.locator("#holdings").innerText()),
+  /against what you paid/i.test(await page.locator("#holdings").innerText()),
 );
 
 await page.locator("#tabRatings").click();
@@ -544,6 +556,47 @@ check(
   "a case-different duplicate is not added twice",
   (await page.locator("#wl .wl-row").count()) === 3,
 );
+
+// ⚠️ REGRESSION: a watchlist addition must survive WITHOUT ever tapping "Save and refresh". Before
+// this fix, adding an item only lived in memory until that separate button (below the key fields,
+// easy to miss) was pressed — closing the sheet via "Close" discarded it silently on the next
+// reload, which is exactly what this reproduces: close, not save.
+await page.locator("#closeBtn").click();
+await page.reload();
+await page.waitForSelector(".card", { timeout: 15000 });
+await page.locator("#setBtn").click();
+const wlRowsAfterReload = await page.locator("#wl .wl-row").count();
+check(
+  "a watchlist addition survives a reload without ever tapping Save",
+  wlRowsAfterReload === 3,
+  `got ${wlRowsAfterReload}`,
+);
+await page.locator("#closeBtn").click();
+await page.locator("#tabHoldings").click();
+await page.locator("#addTxBtn").click();
+const txOptions = await page.locator("#txAsset option").allTextContents();
+check(
+  "the auto-saved addition reaches the holdings asset picker",
+  txOptions.some((t) => /solana/i.test(t)),
+  JSON.stringify(txOptions),
+);
+await page.locator("#txCancel").click();
+await page.locator("#tabRatings").click();
+
+// ⚠️ REGRESSION: a GitHub token typed into Settings must survive a save. The previous code set
+// `state.keys.github` and then immediately replaced the whole object with `state.keys = {}` on the
+// very next line, discarding it on every single save.
+await page.locator("#setBtn").click();
+await page.locator("#ghKey").fill("github_pat_regression_check");
+await page.locator("#saveBtn").click();
+await page.locator("#setBtn").click();
+const ghKeyAfterSave = await page.locator("#ghKey").inputValue();
+check(
+  "a GitHub token survives Save and refresh, not just Add",
+  ghKeyAfterSave === "github_pat_regression_check",
+  `got ${JSON.stringify(ghKeyAfterSave)}`,
+);
+await page.locator("#closeBtn").click();
 
 // Dark mode must not leave unreadable text.
 await page.emulateMedia({ colorScheme: "dark" });

@@ -411,7 +411,9 @@ input[type="text"] { font-family: var(--mono); }
     <input type="text" id="tdKey" placeholder="paste key" autocomplete="off" spellcheck="false">
 
     <label>Finnhub API key
-      <span class="note">Free at finnhub.io — adds analyst forecasts and company financials. Optional.</span>
+      <span class="note">Free at finnhub.io — adds company financials (Business). Analyst forecasts
+        aren't coming through at the moment — that's a change on Finnhub's side, not your key.
+        Optional.</span>
     </label>
     <input type="text" id="fhKey" placeholder="paste key" autocomplete="off" spellcheck="false">
 
@@ -1399,6 +1401,7 @@ input[type="text"] { font-family: var(--mono); }
     Array.prototype.forEach.call(wl.querySelectorAll("[data-rm]"), function (btn) {
       btn.addEventListener("click", function () {
         state.watch.splice(Number(btn.getAttribute("data-rm")), 1);
+        write(K_WATCH, state.watch);
         renderWatchlist();
       });
     });
@@ -1461,7 +1464,13 @@ input[type="text"] { font-family: var(--mono); }
     // "Bitcoin" and "bitcoin" becoming two rows that fetch the same asset twice.
     var norm = kind === "crypto" ? id.toLowerCase().replace(/\s+/g, "-") : id.toUpperCase();
     var dupe = state.watch.some(function (w) { return w.id === norm && w.kind === kind; });
-    if (!dupe) state.watch.push({ kind: kind, id: norm });
+    // ⚠️ PERSIST IMMEDIATELY, NOT ONLY ON "SAVE AND REFRESH". Before this, adding or removing a
+    // watchlist item only lived in memory until that separate button (at the bottom of a scrollable
+    // sheet, easy to miss) was tapped — closing the sheet, or just not scrolling to it, silently
+    // discarded the addition on the next reload. Holdings' own lots have always auto-saved the
+    // instant they change (`write(K_LOTS, ...)` in `saveTx`); the watchlist should behave the same
+    // way; "Save and refresh" still exists for currency/key changes and to trigger an actual refetch.
+    if (!dupe) { state.watch.push({ kind: kind, id: norm }); write(K_WATCH, state.watch); }
     $("addId").value = "";
     renderWatchlist();
   });
@@ -1474,13 +1483,16 @@ input[type="text"] { font-family: var(--mono); }
     var td = $("tdKey").value.trim();
     var fh = $("fhKey").value.trim();
     var gh = $("ghKey").value.trim();
-    // ⚠️ Stored under `keys` with the market-data keys, so the existing "keys never leave this
-    // browser" promise and the settings copy cover it too. It is sent to api.github.com and nowhere
-    // else, exactly as the others are sent only to their own API.
-    if (gh) { state.keys.github = gh; } else { delete state.keys.github; }
-    state.keys = {};
-    if (td) state.keys.twelveData = td;
-    if (fh) state.keys.finnhub = fh;
+    // ⚠️ BUILD THE NEW OBJECT IN ONE GO. The previous version set `state.keys.github` and then
+    // immediately replaced the whole object with `state.keys = {}`, discarding it on every single
+    // save — a GitHub token pasted in for one-tap "Fetch the latest flows now" never actually
+    // survived past the save that stored it. Assigning all three fields to one fresh object first,
+    // then swapping it in once, has no ordering trap to fall into.
+    var newKeys = {};
+    if (td) newKeys.twelveData = td;
+    if (fh) newKeys.finnhub = fh;
+    if (gh) newKeys.github = gh;
+    state.keys = newKeys;
     write(K_WATCH, state.watch);
     write(K_KEYS, state.keys);
     write(K_CUR, state.currency);

@@ -64,6 +64,27 @@ async function getJson(url: string, provider: string): Promise<unknown> {
   if (!res.ok) {
     throw new ProviderError(`${provider} returned ${res.status}.`, provider);
   }
+  // ⚠️ A 200 THAT ISN'T JSON IS A DIFFERENT FAILURE FROM "NO DATA", AND MUST NOT LOOK THE SAME.
+  // Found 2026-08-08: Finnhub's recommendation-trends endpoint returns HTTP 200 with their own
+  // marketing site's HTML (served by Cloudflare, carrying none of the x-ratelimit headers their real
+  // API responses carry — the request never reaches their API backend at all) instead of a JSON
+  // error, once a route has moved or stopped resolving. Without this check, `res.json()` throws a
+  // generic SyntaxError that every caller's catch-and-return-null pattern (by design, for genuinely
+  // absent data — e.g. a crypto asset with no analyst coverage) swallows identically to "there is no
+  // data here", which is false; there IS data, the request just never reached it. A named error at
+  // least makes the failure diagnosable instead of indistinguishable from an honest empty result.
+  // ⚠️ `res.headers` is guarded because the browser smoke test's stubbed `fetch` returns plain
+  // objects with no `Headers` interface at all — real `fetch()` (browser and Node, which is what
+  // `tools/*.ts` runs under) always provides one, so this only ever no-ops against a test double.
+  const contentType: string = res.headers && typeof res.headers.get === "function"
+    ? res.headers.get("content-type") || ""
+    : "";
+  if (contentType && !contentType.includes("json")) {
+    throw new ProviderError(
+      `${provider} returned ${contentType} instead of data — the endpoint may have moved.`,
+      provider,
+    );
+  }
   return (await res.json()) as unknown;
 }
 

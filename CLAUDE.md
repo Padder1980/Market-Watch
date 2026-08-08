@@ -70,7 +70,7 @@ npm ci                         # once
 node build.ts                  # rebuild index.html — run after ANY edit to src/, entry.ts or shell.html
 npx tsc --noEmit               # typecheck (must be clean — covers tools/ too, not just the browser bundle)
 node --test "test/*.test.ts"   # 83 engine tests
-node test/app-smoke.mjs        # 53 browser checks against the BUILT page
+node test/app-smoke.mjs        # 56 browser checks against the BUILT page
 node tools/paper-round.ts --dry     # the daily flows robot, without writing anything
 node tools/discover-round.ts --dry  # the nightly market scan, without writing anything
 npm run check                  # build + typecheck + tests + smoke, in that order
@@ -567,6 +567,100 @@ assigning it in the constructor body — plain enough for both toolchains. **Any
 script that imports from `src/` should be treated as a second consumer with its own constraints**,
 not assumed to inherit whatever the browser bundle already tolerates.
 
+## Two real bugs found the day the shares secrets went live (2026-08-08)
+
+The owner added the `TWELVE_DATA_KEY`/`FINNHUB_KEY` secrets and reported two things in the same
+message: the shares scan (below) worked but Forecasts came back empty everywhere, and "it's not
+letting me add anything to my holdings list other than bitcoin and eth." Both were real, both are
+fixed, and both are now regression-tested — see the smoke checks named for them.
+
+### Bug 1 — the watchlist only ever saved on a button easy to never reach
+
+`saveTx`/holdings lots have always auto-saved the instant they change (`write(K_LOTS, ...)` inside
+the click handler itself). The watchlist editor didn't: `addBtn`'s and the remove button's handlers
+only ever mutated `state.watch` **in memory**, and the only thing that ever called
+`write(K_WATCH, state.watch)` was the separate "Save and refresh" button at the very bottom of a
+scrollable sheet, past both API key fields. Tap **+**, see the new row appear, close the sheet (or
+just don't scroll that far) — and the addition is gone on the next reload, with nothing on screen
+ever having said so. This is almost certainly what "only bitcoin and eth" was: the default watchlist
+is the only thing that was ever actually persisted. `txAssetOptions()` (the "Add a purchase or sale"
+dropdown) was never the bug — it faithfully lists whatever is in `state.watch`; there was just never
+enough in there to list.
+
+Fixed by writing `K_WATCH` immediately inside both the add and the remove handlers, same as holdings
+already does. "Save and refresh" still exists, for currency/key changes and to trigger an actual
+price fetch — but the watchlist itself no longer depends on it.
+
+⚠️ **THE TEST THAT SHOULD HAVE CAUGHT THIS HAD ITS OWN BUG, HIDING A SECOND, UNRELATED ONE.** Adding
+a genuine "survives a reload without tapping Save" smoke check failed outright — not because the fix
+was wrong, but because `test/app-smoke.mjs`'s shared `addInitScript` called `localStorage.clear()` as
+its last line, and `addInitScript` **reruns before every navigation of the page, including every
+`page.reload()` later in the same test file** — silently wiping any reload-persistence check in the
+whole suite. `browser.newPage()` already starts from a fresh, storage-isolated context, so the clear
+was never needed for the FIRST load; it was only ever live (and only ever harmful) on a reload.
+Removed entirely. This also explains why the pre-existing "holdings persist across a reload" check
+had never actually caught anything: its assertion was `/Worth now/i.test(...)`, and `renderHoldings`'s
+own **empty-state copy** ("...this page will show what it is worth now") matches that regex too —
+so the check passed identically whether or not the holding survived. Reworded to
+`/against what you paid/i`, a phrase the empty state cannot produce. Same lesson Inte-Run's CLAUDE.md
+already has several entries for, in a new place: a guard that cannot fail on the thing it claims to
+guard is not a guard, and here it took a second, correctly-written check right next to it to expose
+the first one's blind spot.
+
+### Bug 2 — a GitHub token was discarded on every single save
+
+`saveBtn`'s handler set `state.keys.github = gh` and then, on the very next line, replaced the whole
+object with `state.keys = {}` — discarding the assignment that had just been made. A token pasted in
+for one-tap "Fetch the latest flows now" never survived past the save that stored it; reopening
+Settings always showed the field empty again. Not reported directly, found while reading this exact
+code path to fix Bug 1. Fixed by building the new `{twelveData, finnhub, github}` object once, in one
+assignment, instead of mutating-then-replacing.
+
+### The Finnhub Forecasts finding — measured with a temporary diagnostic, not guessed
+
+`data/discover-shares.json`'s real first run (52/52 shares scored) had `rating.analyst.score: null`
+for every single one, including AAPL — obviously wrong, since AAPL has real analyst coverage. Two
+candidate explanations existed: a free-tier paywall (plausible — `price-target` inside the same
+`fetchConsensus` call is already known-paywalled and already handled gracefully), or something else.
+`fetchConsensus` swallows every error by design, so the real cause was invisible from the committed
+data alone.
+
+⚠️ **A ONE-OFF DIAGNOSTIC SCRIPT + WORKFLOW, RUN TWICE AGAINST THE REAL SECRET, THEN DELETED.**
+`tools/diag-finnhub.ts` bypassed the swallowing to print the raw status/headers/body of the actual
+Finnhub calls. Verified, not assumed:
+- **`recommendation-trends`** (query-param token AND `X-Finnhub-Token` header — both tried, both
+  identical): **HTTP 200**, `content-type: text/html`, served by Cloudflare with none of the
+  `x-ratelimit-*` headers a real API response carries. The body is Finnhub's own marketing-site HTML
+  shell. This is **not** a permissions problem — a permissions problem looks like the next line.
+- **`price-target`**: HTTP 403, clean JSON `{"error":"You don't have access to this resource."}` —
+  exactly what a paywalled endpoint looks like, and exactly what the existing code comment already
+  said to expect. Confirmed working as documented; not the bug.
+- **`stock/metric`** (fundamentals, the control): HTTP 200, real JSON, real `x-ratelimit-limit: 60`
+  header — confirms the key itself is valid and Finnhub's API is reachable in general.
+
+**Conclusion: `recommendation-trends` has moved or stopped resolving on Finnhub's side.** A 200
+serving their own website instead of JSON means the request never reaches their API backend — a dead
+or renamed route, not a plan restriction. Nothing in this codebase can fix that without knowing where
+the data now lives, which needs Finnhub's current docs (unreachable from every fetch path available
+in this sandbox — confirmed, not assumed: both raw `curl` and `WebFetch` were refused for
+`finnhub.io`, the former with the egress proxy's own 403-at-CONNECT).
+
+⚠️ **`getJson()` (`src/providers.ts`) NOW TELLS THIS APART FROM "GENUINELY NO DATA."** A non-JSON
+200 used to throw a generic `SyntaxError` from `res.json()`, caught by every caller's
+catch-and-return-null pattern (correct for genuinely absent data) and rendered identically to "AAPL
+has no analyst coverage" — which is false. `getJson` now checks `content-type` first and throws a
+named `ProviderError` naming the mismatch, so a future endpoint move is diagnosable from a normal log
+instead of needing another live diagnostic round. Guarded (`res.headers && typeof res.headers.get
+=== "function"`) because the browser smoke test's stubbed `fetch` returns plain objects with no
+`Headers` interface — real `fetch()`, in the browser and under Node (which is what `tools/*.ts` runs
+under), always provides one, so the guard only ever no-ops against a test double, never against a
+real response.
+
+Settings' Finnhub key copy and the README's provider table were both updated to say Business works
+and Forecasts currently doesn't, rather than continuing to promise something the app can't presently
+deliver. `tools/diag-finnhub.ts` and its one-off workflow were deleted immediately after use — they
+were never meant to ship.
+
 ## Discover for shares (2026-08-08) — the same idea, a genuinely different honesty problem
 
 He asked for "another section... my companion for stocks and shares" that could "use a rich data set
@@ -739,7 +833,7 @@ be phrased as a recommendation to buy or sell.
 ## Current status
 
 Standing on its own since the move from Inte-Run (2026-08-06). Build clean, `tsc --noEmit` clean,
-**83 engine tests** passing, **53 browser smoke checks** passing.
+**83 engine tests** passing, **56 browser smoke checks** passing.
 
 **The paper round has now run against the real pages and it works.** First real success 2026-08-07:
 a genuine 15-row Bitcoin ETF flow scrape committed to `data/flows.json`, verified against the actual
@@ -786,5 +880,17 @@ implying an objectivity it doesn't have. **Not yet live**: `tools/discover-round
 it can run at all — that's the owner's own setup step, not something buildable from a session without
 his keys. Until he adds them, the Shares tab shows its normal "hasn't run yet" state. +5 smoke checks
 (48 → 53).
+
+**Two real bugs fixed 2026-08-08**, both found the day the shares secrets went live: the watchlist
+editor only ever persisted on a button below the key fields, easy to never reach (fixed — add/remove
+now auto-save, same as holdings always has); a GitHub token was silently discarded on every single
+save (fixed — one-line ordering bug). Also confirmed, via a temporary diagnostic run against the real
+key rather than a guess: Finnhub's `recommendation-trends` endpoint now returns their marketing
+site's HTML instead of JSON (moved/dead on their end, not a plan restriction — `price-target`'s
+genuine 403 paywall still works as documented). `getJson()` now distinguishes a non-JSON response
+from genuinely absent data. +3 smoke checks (53 → 56), and two PRE-EXISTING test-harness bugs found
+along the way: a shared `localStorage.clear()` was silently defeating every "survives a reload" check
+in the suite, and the older holdings-reload check had a regex that matched its own empty state. Both
+fixed; see the section above for the full account.
 
 Update this section as you go.

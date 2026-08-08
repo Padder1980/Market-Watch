@@ -204,7 +204,7 @@ To put it on your phone: serve the folder over HTTP and add it to the Home Scree
 node build.ts                  # rebuild first — every check below reads the BUILT page
 npx tsc --noEmit               # typecheck
 node --test "test/*.test.ts"   # 83 engine tests
-node test/app-smoke.mjs        # 53 browser checks against the BUILT page
+node test/app-smoke.mjs        # 56 browser checks against the BUILT page
 ```
 
 Or `npm run check`, which runs all four in that order.
@@ -225,11 +225,18 @@ no key ever leaves your device except to the API it belongs to.
 | **Blockchain.com** | No | Bitcoin on-chain activity — hash rate, transactions, active addresses |
 | **Farside / treasuries** | No | ETF flows and company holdings, via the daily paper round |
 | **Twelve Data** | Free key | Daily price history for shares and funds |
-| **Finnhub** | Free key | Analyst recommendations and company financials |
+| **Finnhub** | Free key | Company financials. Analyst forecasts too, in principle — see below. |
 
 So: **crypto works immediately with no signup** — price, on-chain activity and flows all arrive with
 no key at all. Shares need one free key; the Forecasts and Business pillars need the second. Paste them into ⚙ Settings. Anything missing is scored as *absent*, never
 as *bad* — you'll see `n/a` on that bar and a note saying the picture is partial.
+
+⚠️ **Analyst forecasts specifically aren't coming through right now (found 2026-08-08).**
+Finnhub's `recommendation-trends` endpoint returns HTTP 200 with their own marketing site's HTML
+instead of data — not a 401/403 (that would mean a plan restriction, and the app already handles
+that gracefully). It looks like the endpoint itself has moved or stopped resolving on their end.
+Business (company financials, a *different* Finnhub endpoint) is confirmed still working. Nothing
+to fix on this end until Finnhub's current documentation says where analyst data actually lives now.
 
 ⚠️ **Provider choice was forced by CORS, not by quality.** Better free sources exist — Stooq's CSV,
 Yahoo's chart endpoint, the FT and Reuters RSS feeds — and every one of them refuses to be read from
