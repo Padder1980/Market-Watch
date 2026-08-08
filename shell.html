@@ -262,6 +262,25 @@ input[type="text"] { font-family: var(--mono); }
 .gloss-item:first-child { border-top: none; }
 .gloss-item .gloss-term { font-weight: 650; font-size: 14px; }
 .gloss-item .gloss-def { margin: 2px 0 0; font-size: 13px; color: var(--ink-soft); }
+
+/* ---- detail sheet ---- */
+.detail-sheet { max-width: 560px; }
+.rowtop.clickable { cursor: pointer; }
+.det-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.det-head .nm { font-size: 13px; color: var(--ink-faint); }
+.det-head .sym { font-size: 20px; font-weight: 700; letter-spacing: -.01em; }
+.det-price { font-size: 32px; font-weight: 700; font-family: var(--mono); margin: 10px 0 2px; letter-spacing: -.02em; }
+.det-chg { font-size: 14px; font-family: var(--mono); }
+.det-chart-wrap { margin: 16px 0 6px; height: 140px; }
+.det-chart-wrap svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.det-ranges { display: flex; gap: 6px; margin: 10px 0 4px; }
+.det-ranges button {
+  flex: 1; padding: 8px 4px; border-radius: 9px; border: 1px solid var(--line);
+  background: var(--surface-2); color: var(--ink-soft); font: inherit; font-size: 13px; cursor: pointer;
+}
+.det-ranges button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.det-status { text-align: center; padding: 30px 0; color: var(--ink-faint); font-size: 13px; }
+.det-addbtn { position: sticky; bottom: 0; margin-top: 16px; }
 </style>
 </head>
 <body>
@@ -313,8 +332,9 @@ input[type="text"] { font-family: var(--mono); }
     </div>
 
     <div class="tabs" id="discTabs" role="tablist">
-      <button class="tab" id="discTabCrypto" role="tab" aria-selected="true" data-disckind="crypto">Crypto</button>
-      <button class="tab" id="discTabShares" role="tab" aria-selected="false" data-disckind="shares">Shares</button>
+      <button class="tab" id="discTabAll" role="tab" aria-selected="true" data-disckind="all">All</button>
+      <button class="tab" id="discTabShares" role="tab" aria-selected="false" data-disckind="shares">Stocks &amp; shares</button>
+      <button class="tab" id="discTabCrypto" role="tab" aria-selected="false" data-disckind="crypto">Cryptocurrency</button>
     </div>
 
     <div id="discover"></div>
@@ -395,6 +415,14 @@ input[type="text"] { font-family: var(--mono); }
     </div>
     <button class="btn" id="txSave">Save</button>
     <button class="btn ghost" id="txCancel">Cancel</button>
+  </div>
+</div>
+
+<div class="sheet-ov" id="detailOv">
+  <div class="sheet detail-sheet">
+    <div id="detailBody"></div>
+    <button class="btn det-addbtn" id="detailAddBtn">Add to my holdings</button>
+    <button class="btn ghost" id="detailClose">Close</button>
   </div>
 </div>
 
@@ -499,10 +527,11 @@ input[type="text"] { font-family: var(--mono); }
     view: "ratings",
     lots: read(K_LOTS, []),
     editing: null,
-    discoverKind: "crypto",
+    discoverKind: "all",
     discoverCrypto: null,
     discoverShares: null,
-    fx: null
+    fx: null,
+    detail: null
   };
 
   function $(id) { return document.getElementById(id); }
@@ -588,7 +617,7 @@ input[type="text"] { font-family: var(--mono); }
     var risk = rating.risk.band;
 
     var html = '<div class="card">';
-    html += '<div class="rowtop">';
+    html += '<div class="rowtop clickable" data-detail="' + esc(rating.id) + '">';
     html += '<div class="rank">' + (index + 1) + "</div>";
     html += '<div class="ident"><div class="sym">' + esc(rating.symbol) + "</div>";
     html += '<div class="nm">' + esc(rating.name) + "</div></div>";
@@ -685,6 +714,10 @@ input[type="text"] { font-family: var(--mono); }
     });
 
     list.innerHTML = html;
+
+    list.querySelectorAll("[data-detail]").forEach(function (el) {
+      el.addEventListener("click", function () { openDetailFromRatings(el.getAttribute("data-detail")); });
+    });
   }
 
   // -------------------------------------------------------------------------------------------
@@ -970,7 +1003,7 @@ input[type="text"] { font-family: var(--mono); }
     if (isFinite(q) && q > 0) $("txQty").value = roundUnitsForInput(q);
   }
 
-  function openTxSheet(editId) {
+  function openTxSheet(editId, presetAssetId) {
     var lot = null;
     if (editId) {
       for (var i = 0; i < state.lots.length; i++) {
@@ -979,7 +1012,10 @@ input[type="text"] { font-family: var(--mono); }
     }
     state.editing = lot ? lot.id : null;
     $("txTitle").textContent = lot ? "Edit transaction" : "Add a transaction";
-    $("txAsset").innerHTML = txAssetOptions(lot ? lot.assetId : (state.watch[0] && state.watch[0].id));
+    // `presetAssetId` is how the detail screen's "Add to my holdings" button lands here already
+    // pointed at the right asset, rather than defaulting to the first watchlist row and making the
+    // runner pick it out again from a dropdown they just came from.
+    $("txAsset").innerHTML = txAssetOptions(lot ? lot.assetId : (presetAssetId || (state.watch[0] && state.watch[0].id)));
     $("txSide").value = lot ? lot.side : "buy";
     $("txDate").value = lot ? lot.dateIso : new Date().toISOString().slice(0, 10);
     $("txQty").value = lot ? String(lot.quantity) : "";
@@ -1049,11 +1085,8 @@ input[type="text"] { font-family: var(--mono); }
    * network round trip. `state.discoverCrypto`/`state.discoverShares` stay null until their first
    * genuine fetch and are reused after that, same as `state.ratings` is not refetched on every render.
    */
-  async function loadDiscover(kind) {
+  async function fetchDiscoverKind(kind) {
     var src = discoverSourceFor(kind);
-    if (state[src.slot]) { renderDiscover(); return; }
-    var host = $("discover");
-    host.innerHTML = '<div class="status"><span class="spin"></span> Loading…</div>';
     var result = { entries: [], asOf: null };
     try {
       var res = await fetch(src.url, { cache: "no-cache" });
@@ -1063,6 +1096,20 @@ input[type="text"] { font-family: var(--mono); }
       result.asOf = data.asOf || null;
     } catch (e) { /* leave the empty result — the render below explains it plainly */ }
     state[src.slot] = result;
+  }
+
+  /** "all" needs BOTH files; "crypto"/"shares" need just their own — fetched concurrently, only for
+   * whichever slot hasn't already been loaded this session. */
+  async function loadDiscover(kind) {
+    var needCrypto = (kind === "all" || kind === "crypto") && !state.discoverCrypto;
+    var needShares = (kind === "all" || kind === "shares") && !state.discoverShares;
+    if (needCrypto || needShares) {
+      $("discover").innerHTML = '<div class="status"><span class="spin"></span> Loading…</div>';
+    }
+    var jobs = [];
+    if (needCrypto) jobs.push(fetchDiscoverKind("crypto"));
+    if (needShares) jobs.push(fetchDiscoverKind("shares"));
+    if (jobs.length) await Promise.all(jobs);
     renderDiscover();
   }
 
@@ -1072,7 +1119,7 @@ input[type="text"] { font-family: var(--mono); }
     var risk = rating.risk.band;
 
     var html = '<div class="card">';
-    html += '<div class="rowtop">';
+    html += '<div class="rowtop clickable" data-detail="' + esc(entry.id) + '">';
     html += '<div class="ident"><div class="sym">' + esc(entry.symbol) + "</div>";
     html += '<div class="nm">' + esc(entry.name) + "</div></div>";
     html += '<div class="px"><div class="val">' + esc(money(entry.price, entry.currency)) + "</div>";
@@ -1131,9 +1178,33 @@ input[type="text"] { font-family: var(--mono); }
   function renderDiscover() {
     var kind = state.discoverKind;
     var host = $("discover");
-    var stored = state[discoverSourceFor(kind).slot];
-    var entries = (stored && stored.entries) || [];
-    var noun = kind === "shares" ? "share" : "coin";
+    var entries, noun, method, asOfLine;
+
+    if (kind === "all") {
+      // ⚠️ ONE MERGED, RANKED LIST — crypto and shares side by side, sorted by the SAME
+      // composite/stars fields as every other list in this app. The methodology line has to name
+      // BOTH universes' own method rather than picking one, since a blended list inherits neither
+      // universe's rule on its own.
+      var c = state.discoverCrypto, s = state.discoverShares;
+      entries = (c && c.entries || []).concat((s && s.entries) || []);
+      noun = "item";
+      method = "crypto ranked by market size, shares from a curated list";
+      var dates = [c && c.asOf, s && s.asOf].filter(function (x) { return !!x; });
+      asOfLine = dates.length ? "Scanned " + dates.join(" and ") : null;
+    } else {
+      var stored = state[discoverSourceFor(kind).slot];
+      entries = (stored && stored.entries) || [];
+      noun = kind === "shares" ? "share" : "coin";
+      // ⚠️ THE METHODOLOGY LINE MUST DIFFER BY KIND, AND MUST NOT OVERSTATE SHARES. Crypto
+      // candidates are ranked by CoinGecko's real, live market-cap ordering; the share universe is a
+      // hand-picked list of well-known companies (see tools/discover-round-shares.ts for why no
+      // free, keyless market-cap ranking of shares exists) — saying "size-ranked" for both would
+      // quietly claim an objectivity the share side does not have.
+      method = kind === "shares"
+        ? "a curated list of well-known large companies, not ranked by size"
+        : "ranked by market size";
+      asOfLine = stored && stored.asOf ? "Scanned " + stored.asOf : null;
+    }
 
     if (!entries.length) {
       host.innerHTML = '<div class="empty">Nothing to show yet — the nightly scan has not run, ' +
@@ -1160,29 +1231,32 @@ input[type="text"] { font-family: var(--mono); }
     });
 
     var html = "";
-    // ⚠️ THE METHODOLOGY LINE MUST DIFFER BY KIND, AND MUST NOT OVERSTATE SHARES. Crypto candidates
-    // are ranked by CoinGecko's real, live market-cap ordering; the share universe is a hand-picked
-    // list of well-known companies (see tools/discover-round-shares.ts for why no free, keyless
-    // market-cap ranking of shares exists) — saying "size-ranked" for both would quietly claim an
-    // objectivity the share side does not have.
-    var method = kind === "shares"
-      ? "a curated list of well-known large companies, not ranked by size"
-      : "ranked by market size";
-    if (stored.asOf) {
-      html += '<div class="note" style="margin:0 0 10px">Scanned ' + esc(stored.asOf) +
+    if (asOfLine) {
+      html += '<div class="note" style="margin:0 0 10px">' + esc(asOfLine) +
         " · " + method + " · " + shown.length + " " + noun + (shown.length === 1 ? "" : "s") +
         " not already on your watchlist</div>";
     }
     shown.forEach(function (e) { html += discoverCardHtml(e); });
     host.innerHTML = html;
+
+    host.querySelectorAll("[data-detail]").forEach(function (el) {
+      el.addEventListener("click", function () {
+        var id = el.getAttribute("data-detail");
+        var found = null;
+        for (var i = 0; i < shown.length; i++) { if (shown[i].id === id) { found = shown[i]; break; } }
+        if (found) openDetailFromDiscoverEntry(found);
+      });
+    });
   }
 
   function setDiscoverKind(kind) {
     state.discoverKind = kind;
+    $("discTabAll").setAttribute("aria-selected", String(kind === "all"));
     $("discTabCrypto").setAttribute("aria-selected", String(kind === "crypto"));
     $("discTabShares").setAttribute("aria-selected", String(kind === "shares"));
     loadDiscover(kind);
   }
+  $("discTabAll").addEventListener("click", function () { setDiscoverKind("all"); });
   $("discTabCrypto").addEventListener("click", function () { setDiscoverKind("crypto"); });
   $("discTabShares").addEventListener("click", function () { setDiscoverKind("shares"); });
 
@@ -1410,6 +1484,233 @@ input[type="text"] { font-family: var(--mono); }
   $("eduTabGuide").addEventListener("click", function () { setEduView("guide"); });
   $("eduTabGlossary").addEventListener("click", function () { setEduView("glossary"); });
   $("glossSearch").addEventListener("input", renderEduGlossary);
+
+  // -------------------------------------------------------------------------------------------
+  // The detail screen — tap any card, anywhere (Ratings or Discover), and see the price chart, the
+  // same rating breakdown as the card, and a one-tap way into "My holdings".
+  // -------------------------------------------------------------------------------------------
+
+  // Daily closes only — see providers.ts's fetchCrypto/fetchEquityHistory. Neither CoinGecko's free
+  // tier at the interval this app requests nor Twelve Data's free tier gives intraday bars, so 1D and
+  // 1W are deliberately NOT offered: a single point (or five sparse ones) drawn as a "chart" would
+  // look like real intraday movement it cannot honestly show. This is a narrower set than a real
+  // broker app's 1D/1W/1M/1Y/Max — a scoped-down, honest version of it, not a copy.
+  var DET_RANGES = [
+    { id: "1m", label: "1M", days: 30 },
+    { id: "3m", label: "3M", days: 90 },
+    { id: "1y", label: "1Y", days: 365 },
+    { id: "max", label: "Max", days: null }
+  ];
+
+  /**
+   * A simple line + gradient-fill area chart, scaled to fill its container (`preserveAspectRatio`
+   * is "none" on purpose — the wrapper's CSS sets the real aspect ratio, and the SVG just stretches
+   * into it). Colour follows the direction across the shown window: green if the window ends above
+   * where it started, red otherwise — the same convention `.up`/`.down` already use everywhere else.
+   */
+  function priceChartSvg(history, days) {
+    var pts = history || [];
+    if (days != null && pts.length > days) pts = pts.slice(pts.length - days);
+    if (pts.length < 2) return '<div class="det-status">Not enough price history yet.</div>';
+
+    var w = 600, h = 140, pad = 4;
+    var closes = pts.map(function (p) { return p.close; });
+    var min = Math.min.apply(null, closes);
+    var max = Math.max.apply(null, closes);
+    var span = max - min || 1;
+    var stepX = pts.length > 1 ? (w - pad * 2) / (pts.length - 1) : 0;
+    var coords = pts.map(function (p, i) {
+      var x = pad + i * stepX;
+      var y = pad + (h - pad * 2) * (1 - (p.close - min) / span);
+      return [x, y];
+    });
+    var line = coords.map(function (c, i) {
+      return (i === 0 ? "M" : "L") + c[0].toFixed(1) + "," + c[1].toFixed(1);
+    }).join(" ");
+    var last = coords[coords.length - 1];
+    var first = coords[0];
+    var area = line + " L" + last[0].toFixed(1) + "," + (h - pad) + " L" + first[0].toFixed(1) + "," + (h - pad) + " Z";
+    var up = closes[closes.length - 1] >= closes[0];
+    var stroke = up ? "var(--up)" : "var(--down)";
+    var gid = "detgrad" + Math.random().toString(36).slice(2, 8);
+    return '<svg viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none">' +
+      '<defs><linearGradient id="' + gid + '" x1="0" y1="0" x2="0" y2="1">' +
+      '<stop offset="0%" stop-color="' + stroke + '" stop-opacity="0.35"/>' +
+      '<stop offset="100%" stop-color="' + stroke + '" stop-opacity="0"/></linearGradient></defs>' +
+      '<path d="' + area + '" fill="url(#' + gid + ')" stroke="none"/>' +
+      '<path d="' + line + '" fill="none" stroke="' + stroke + '" stroke-width="2.5" ' +
+      'stroke-linejoin="round" stroke-linecap="round"/></svg>';
+  }
+
+  function renderDetail() {
+    var d = state.detail;
+    if (!d) return;
+    var move = d.move1, move30 = d.move30;
+    var cls = move == null ? "flat" : move > 0 ? "up" : move < 0 ? "down" : "flat";
+
+    var html = '<div class="det-head"><div>';
+    html += '<div class="nm">' + esc(d.name) + "</div>";
+    html += '<div class="sym">' + esc(d.symbol) + "</div>";
+    html += "</div>" + starHtml(d.rating.stars) + "</div>";
+
+    html += '<div class="det-price">' + esc(money(d.price, d.currency)) + "</div>";
+    html += '<div class="det-chg ' + cls + '">' + esc(pctText(move)) + " today";
+    if (move30 != null) html += " · " + esc(pctText(move30)) + " over 30d";
+    html += "</div>";
+
+    html += '<div class="det-chart-wrap">';
+    if (d.historyError) {
+      html += '<div class="det-status">' + esc(d.historyError) + "</div>";
+    } else if (!d.history) {
+      html += '<div class="det-status"><span class="spin"></span> Loading chart…</div>';
+    } else {
+      var active = null;
+      for (var i = 0; i < DET_RANGES.length; i++) { if (DET_RANGES[i].id === d.range) { active = DET_RANGES[i]; break; } }
+      html += priceChartSvg(d.history, (active || DET_RANGES[0]).days);
+    }
+    html += "</div>";
+
+    if (d.history) {
+      html += '<div class="det-ranges">';
+      DET_RANGES.forEach(function (r) {
+        html += '<button data-range="' + r.id + '" aria-pressed="' + (r.id === d.range) + '">' + r.label + "</button>";
+      });
+      html += "</div>";
+      html += '<div class="note" style="margin:6px 0 0">Daily closing prices, not live intraday ticks.</div>';
+    }
+
+    html += '<div class="bars" style="margin-top:16px">';
+    html += barHtml("Trend", d.rating.trend);
+    if (d.rating.kind === "crypto") {
+      html += barHtml("Flows", d.rating.flows);
+      html += barHtml("Network", d.rating.network);
+    } else {
+      html += barHtml("Forecasts", d.rating.analyst);
+      html += barHtml("Business", d.rating.fundamentals);
+    }
+    html += "</div>";
+
+    html += '<span class="pill ' + d.rating.risk.band + '" style="margin-top:10px;display:inline-block">' +
+      esc(d.rating.risk.band.replace("-", " ")) + " risk</span>";
+
+    html += '<details class="more" style="margin-top:12px"><summary>Show the working</summary><div class="working">';
+    html += "<h4>Overall</h4><ul><li>Composite score " + Math.round(d.rating.composite) +
+      "/100 across the pillars that had data, giving " + d.rating.stars + " star" +
+      (d.rating.stars === 1 ? "" : "s") + ".</li></ul>";
+    d.rating.caveats.forEach(function (c) { html += '<div class="caveat">' + esc(c) + "</div>"; });
+    html += "<h4>Trend</h4>" + listHtml(d.rating.trend.reasons);
+    if (d.rating.kind === "crypto") {
+      html += "<h4>Institutional flows</h4>" + listHtml(d.rating.flows.reasons);
+      html += "<h4>On-chain network</h4>" + listHtml(d.rating.network.reasons);
+    } else {
+      html += "<h4>Published forecasts</h4>" + listHtml(d.rating.analyst.reasons);
+      html += "<h4>Business data</h4>" + listHtml(d.rating.fundamentals.reasons);
+    }
+    html += "<h4>Risk</h4>" + listHtml(d.rating.risk.reasons);
+    html += "</div></details>";
+
+    var body = $("detailBody");
+    body.innerHTML = html;
+    body.querySelectorAll("[data-range]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        state.detail.range = b.getAttribute("data-range");
+        renderDetail();
+      });
+    });
+  }
+
+  /**
+   * ⚠️ HISTORY IS FETCHED ON DEMAND, NOT CARRIED IN data/discover*.json. Those files deliberately
+   * ship pre-scored results rather than raw price series — see discover-round.ts's own header for
+   * why sending a year of history for ~70 assets nightly would multiply the file size for nothing.
+   * So a Discover-sourced detail view has everything it needs for the header and the rating instantly
+   * (the entry already carries all of that), and fetches only the ONE thing it's missing — this one
+   * asset's own history — the moment it's actually opened.
+   */
+  async function loadDetailHistory() {
+    var d = state.detail;
+    if (!d) return;
+    try {
+      var history;
+      if (d.kind === "crypto") {
+        var snap = await MK.fetchCrypto(d.id, state.currency);
+        history = snap.history;
+      } else {
+        if (!state.keys.twelveData) throw new Error("NEEDS_KEY");
+        var r = await MK.fetchEquityHistory(d.id, state.keys.twelveData);
+        history = r.history;
+      }
+      if (state.detail && state.detail.id === d.id) {
+        state.detail.history = history;
+        renderDetail();
+      }
+    } catch (err) {
+      if (state.detail && state.detail.id === d.id) {
+        state.detail.historyError = (err && err.message === "NEEDS_KEY")
+          ? "Add a free Twelve Data key in Settings to see the price chart for shares."
+          : "Couldn't load the price chart right now — check the connection and try again.";
+        renderDetail();
+      }
+    }
+  }
+
+  function openDetail(d) {
+    d.range = "1m";
+    state.detail = d;
+    renderDetail();
+    $("detailOv").classList.add("on");
+    if (!d.history) loadDetailHistory();
+  }
+
+  /** Ratings entries always have full history already loaded (Ratings scores Trend off it), so this
+   * never fetches anything — it just repackages what's already in memory. */
+  function openDetailFromRatings(assetId) {
+    var found = null;
+    for (var i = 0; i < state.ratings.length; i++) {
+      if (state.ratings[i].snap.id === assetId) { found = state.ratings[i]; break; }
+    }
+    if (!found) return;
+    openDetail({
+      id: found.snap.id, kind: found.snap.kind, symbol: found.rating.symbol, name: found.rating.name,
+      price: found.snap.price, currency: found.snap.currency, rating: found.rating,
+      history: found.snap.history, move1: recentMove(found.snap, 1), move30: recentMove(found.snap, 30)
+    });
+  }
+
+  /** An asset Discover surfaced that ALSO happens to already be on the watchlist gets the richer,
+   * already-loaded Ratings version instead of a needless duplicate fetch. */
+  function openDetailFromDiscoverEntry(entry) {
+    for (var i = 0; i < state.ratings.length; i++) {
+      if (state.ratings[i].snap.id === entry.id) { openDetailFromRatings(entry.id); return; }
+    }
+    openDetail({
+      id: entry.id, kind: entry.rating.kind, symbol: entry.symbol, name: entry.name,
+      price: entry.price, currency: entry.currency, rating: entry.rating,
+      history: null, move1: entry.move1, move30: entry.move30
+    });
+  }
+
+  $("detailClose").addEventListener("click", function () {
+    $("detailOv").classList.remove("on");
+  });
+  $("detailOv").addEventListener("click", function (e) {
+    if (e.target === $("detailOv")) $("detailOv").classList.remove("on");
+  });
+  // ⚠️ "ADD TO MY HOLDINGS" IS A RECORD SHORTCUT, NEVER A REAL PURCHASE. This app has no brokerage
+  // connection and never will — the button adds the asset to the watchlist if it isn't already
+  // there (so the transaction sheet has something to attach the record to) and opens the SAME
+  // add-a-transaction sheet everything else in Holdings already uses, pre-selected to this asset.
+  $("detailAddBtn").addEventListener("click", function () {
+    var d = state.detail;
+    if (!d) return;
+    var already = state.watch.some(function (w) { return w.id === d.id; });
+    if (!already) {
+      state.watch.push({ kind: d.kind, id: d.id, label: d.name });
+      write(K_WATCH, state.watch);
+    }
+    $("detailOv").classList.remove("on");
+    openTxSheet(null, d.id);
+  });
 
   // -------------------------------------------------------------------------------------------
   // Running the paper round on demand

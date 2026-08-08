@@ -338,6 +338,44 @@ check(
 );
 
 // ---------------------------------------------------------------------------------------------
+// The detail screen — tap a Ratings card, see a chart and the same rating breakdown, add to holdings
+// ---------------------------------------------------------------------------------------------
+
+await page.locator("#list .card").first().locator(".rowtop.clickable").click();
+check("tapping a Ratings card opens the detail sheet", await page.locator("#detailOv.on").isVisible());
+const detailBody1 = await page.locator("#detailBody").innerText();
+check(
+  "the detail screen names the asset and shows a star rating",
+  /Bitcoin/i.test(detailBody1) && (await page.locator("#detailBody .stars").count()) === 1,
+  detailBody1.slice(0, 200),
+);
+check(
+  "a chart renders immediately for a Ratings asset — its full history is already loaded, no fetch needed",
+  (await page.locator("#detailBody svg").count()) === 1,
+);
+check(
+  "1M is the default range",
+  (await page.locator('[data-range="1m"]').getAttribute("aria-pressed")) === "true",
+);
+
+await page.locator('[data-range="1y"]').click();
+check(
+  "switching range re-renders the chart with the new range selected",
+  (await page.locator('[data-range="1y"]').getAttribute("aria-pressed")) === "true" &&
+    (await page.locator('[data-range="1m"]').getAttribute("aria-pressed")) === "false" &&
+    (await page.locator("#detailBody svg").count()) === 1,
+);
+
+await page.locator("#detailAddBtn").click();
+const presetAsset = await page.locator("#txAsset").inputValue();
+check(
+  "'Add to my holdings' opens the transaction sheet pre-selected to this asset",
+  (await page.locator("#txOv.on").isVisible()) && presetAsset === "bitcoin",
+  presetAsset,
+);
+await page.locator("#txCancel").click();
+
+// ---------------------------------------------------------------------------------------------
 // The holdings page
 // ---------------------------------------------------------------------------------------------
 
@@ -494,6 +532,48 @@ check(
   discoverNotice.slice(0, 200),
 );
 
+// ⚠️ "All" IS THE DEFAULT TAB, NOT "Crypto" — merging crypto's Dogecoin with shares' AAPL into one
+// list is the whole point of it, so the count here is 2, not 1. The crypto-only exclusion check
+// (still exactly 1, Dogecoin only) happens below once the Crypto tab is selected explicitly.
+check("the All tab is selected by default", await page.locator("#discTabAll").getAttribute("aria-selected") === "true");
+const allCards = await page.locator("#discover .card").count();
+check(
+  "the All tab merges crypto and shares into one list",
+  allCards === 2,
+  `got ${allCards} cards — expected Dogecoin (crypto) + AAPL (shares), Bitcoin excluded`,
+);
+const allText = await page.locator("#discover").innerText();
+check(
+  "Bitcoin (already on the watchlist) is excluded even from the merged All view",
+  /Dogecoin/i.test(allText) && /Apple/i.test(allText) && !/Bitcoin/i.test(allText),
+  allText.slice(0, 300),
+);
+
+// Tapping a Discover card for crypto not yet on the watchlist: this asset has no loaded snapshot, so
+// the detail screen must fetch its history on demand (the generic coingecko stub used throughout
+// this file covers it) rather than showing nothing.
+await page.locator("#discover .card", { hasText: "Dogecoin" }).locator(".rowtop.clickable").click();
+check("tapping a Discover crypto card opens the detail sheet", await page.locator("#detailOv.on").isVisible());
+await page.locator("#detailBody svg").first().waitFor({ timeout: 5000 });
+check(
+  "the on-demand history fetch resolves into a real chart for a Discover-only asset",
+  (await page.locator("#detailBody svg").count()) === 1,
+);
+await page.locator("#detailClose").click();
+
+// Tapping a Discover card for a share BEFORE any Twelve Data key has been set (that happens later
+// in this file): must degrade to a clear, specific message, never a stuck spinner or silent failure.
+await page.locator("#discover .card", { hasText: "Apple" }).locator(".rowtop.clickable").click();
+await page.locator("#detailBody").getByText(/Twelve Data key/i).waitFor({ timeout: 5000 });
+const shareDetailText = await page.locator("#detailBody").innerText();
+check(
+  "a share's chart asks for a Twelve Data key rather than failing silently when none is set yet",
+  /Twelve Data key/i.test(shareDetailText),
+  shareDetailText.slice(0, 300),
+);
+await page.locator("#detailClose").click();
+
+await page.locator("#discTabCrypto").click();
 const discoverCards = await page.locator("#discover .card").count();
 check(
   "a coin already on the watchlist is excluded from Discover",

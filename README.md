@@ -76,6 +76,23 @@ GitHub's servers overnight:
 Until that's done, the Shares tab shows its normal "hasn't run yet" message — nothing breaks, it just
 has nothing to show.
 
+### All, Stocks & shares, Cryptocurrency — and tapping into a detail screen
+
+Discover opens on **All** by default: crypto and shares merged into one list, ranked together by the
+same evidence-based score, rather than two separate lists you have to check individually. Tap either
+tab to narrow it to just Stocks & shares or just Cryptocurrency instead.
+
+Tap any card — here, or on your own Ratings tab — and it opens a full detail screen: the current
+price, a real price chart, and the same trend/risk breakdown as the card, with **"Show the working"**
+still one tap away. The chart offers **1M / 3M / 1Y / Max** — deliberately not shorter ranges, because
+the free data sources behind this app only ever provide one price per day. A "1D" button over
+once-a-day data would draw a chart that looks more detailed than the numbers actually are, so it isn't
+offered.
+
+From that screen, **"Add to my holdings"** takes you straight into the ordinary "add a transaction"
+form with the asset already selected. It does not buy anything — this app has no connection to a
+broker and never will; it is a shortcut for recording a purchase you already made elsewhere.
+
 ### Where the flow numbers come from — "the paper round"
 
 Farside publishes the daily ETF flow table free, and the treasuries pages publish holdings free.
@@ -214,7 +231,7 @@ To put it on your phone: serve the folder over HTTP and add it to the Home Scree
 node build.ts                  # rebuild first — every check below reads the BUILT page
 npx tsc --noEmit               # typecheck
 node --test "test/*.test.ts"   # 91 engine tests
-node test/app-smoke.mjs        # 62 browser checks against the BUILT page
+node test/app-smoke.mjs        # 74 browser checks against the BUILT page
 ```
 
 Or `npm run check`, which runs all four in that order.

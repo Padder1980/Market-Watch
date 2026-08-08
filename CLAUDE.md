@@ -644,6 +644,72 @@ actual cross-currency round trip through the real UI (add a USD share via Settin
 the transaction sheet, save, and read back a converted £ value with no false "couldn't convert"
 warning), and a check that the transaction history keeps showing the original $ amount, unconverted.
 
+## Discover browsing redesign — tabs, a detail screen, a real chart (2026-08-08)
+
+Requested mid-session against two reference screenshots from a different investment app: a category
+tab row across the top, tapping a row opens a full detail screen (price, chart, range buttons), and a
+button on that screen to add the asset straight to holdings.
+
+⚠️ **"ALL" IS ONE MERGED, RE-RANKED LIST — NOT A THIRD LABEL OVER THE SAME TWO SEPARATE LISTS.**
+Asked directly, the owner chose the merged version. `renderDiscover()`'s "all" branch concatenates
+both fetched entry sets and sorts the combined array by the same `stars * 1000 + composite` ordering
+Discover has always used — a share and a coin can end up side by side, ranked on identical evidence,
+which is the entire point of a merged view instead of two lists glued together. Bitcoin/AAPL-style
+"already on your watchlist" exclusion is applied per-source before the merge, so nothing already held
+can reappear by sneaking in through the other source.
+
+⚠️ **THE DETAIL SCREEN WORKS FROM BOTH DISCOVER AND RATINGS — ONE BUILDER, TWO ENTRY POINTS.** Also
+asked directly. `openDetailFromRatings(assetId)` and `openDetailFromDiscoverEntry(entry)` both end up
+calling the same `openDetail(d)` / `renderDetail()` pair, so the chart, range buttons and "Add to my
+holdings" button are identical regardless of which tab you tapped in from — a runner (well, an
+investor) who taps into an existing rating gets exactly the same screen as one browsing something new.
+Ratings entries already carry `snap.history` in memory (the composite scoring pass needs it anyway),
+so that path renders immediately with no fetch; Discover entries do not carry history at all (next
+paragraph), so that path always needs one.
+
+⚠️ **HISTORY IS FETCHED ON DEMAND, NOT CARRIED IN `data/discover*.json`.** Those files are
+deliberately compact — pre-scored `DiscoverEntry[]`, no price series — because sending 365 days of
+history for ~20+52 assets just to redraw two percentages the server already computed
+(`move1`/`move30`) would multiply the file size for a screen most sessions never open. So tapping into
+a Discover-only asset calls `MK.fetchCrypto`/`MK.fetchEquityHistory` — the SAME provider functions the
+Ratings tab already uses — right there, once, only for the one asset actually opened. No new fetch
+logic, no change to the nightly scan's file shape.
+
+⚠️ **A SHARE'S CHART NAMES THE MISSING KEY RATHER THAN FAILING SILENTLY.** Equity history needs
+`TWELVE_DATA_KEY`, same as the rest of the Shares feature — an owner who hasn't added it yet (see the
+bug section below) taps into a share from Discover and sees an honest "needs a Twelve Data key" state
+in place of the chart, not a blank box or a console error.
+
+⚠️ **THE CHART OFFERS 1M / 3M / 1Y / MAX — DELIBERATELY NOT 1D / 1W, EVEN THOUGH THE REFERENCE
+SCREENSHOTS SHOWED THEM.** Both data sources this app already uses only ever return DAILY closes at
+the intervals this app requests them — CoinGecko's `market_chart` and Twelve Data's free tier alike.
+Offering a "1D" button over daily-resolution data would draw a flat or near-flat line and imply real
+intraday movement that was never fetched — the same "don't dress up what you don't actually have"
+principle this file already applies to `deltaComposite` and to the "not a recommendation" framing
+throughout. `priceChartSvg` and the "Daily closing prices, not live intraday ticks" caption under the
+chart say so in place of the two ranges that were quietly dropped, rather than shipping a chart that
+looks more granular than it is.
+
+⚠️ **"ADD TO MY HOLDINGS" IS A RECORD-ONLY SHORTCUT, NEVER A BUY BUTTON.** It adds the asset to
+`state.watch` if it isn't already there (so it appears in the transaction sheet's Asset dropdown, same
+mechanism as adding via Settings), writes immediately (same "auto-save, don't wait for a distant Save
+button" fix as the Bug 1 section below), closes the detail sheet, and opens the ordinary "Add a
+transaction" sheet pre-selected to that asset via `openTxSheet(null, assetId)`. Nothing here executes
+a trade, calls a brokerage, or moves money — this app has no brokerage connection and the button must
+never imply one. Wording stays "Add to my holdings," never "Buy."
+
+⚠️ **THE SAME CARD MARKUP DRIVES BOTH TAP TARGETS.** `discoverCardHtml` (Discover) and `cardHtml`
+(Ratings) both mark their `.rowtop` as `.clickable` with a `data-detail="<id>"` attribute; each list's
+render function delegates a single click listener over `[data-detail]` rather than binding one
+listener per card — consistent with the existing `data-rm`/`data-edit`/`data-del` pattern already used
+for holdings rows, so this isn't a new event-wiring convention, just the same one applied here.
+
++12 smoke checks (62 → 74): default-All-tab merging and exclusion, tapping a Ratings card into the
+detail sheet, a chart rendering immediately for a Ratings asset (no fetch needed), 1M as the default
+range and switching ranges re-rendering the chart, "Add to my holdings" opening the transaction sheet
+pre-selected, tapping a Discover crypto card through an on-demand fetch into a real chart, and a
+share's chart asking for a Twelve Data key rather than failing silently with none set.
+
 ## Two real bugs found the day the shares secrets went live (2026-08-08)
 
 The owner added the `TWELVE_DATA_KEY`/`FINNHUB_KEY` secrets and reported two things in the same
@@ -910,7 +976,7 @@ be phrased as a recommendation to buy or sell.
 ## Current status
 
 Standing on its own since the move from Inte-Run (2026-08-06). Build clean, `tsc --noEmit` clean,
-**91 engine tests** passing, **62 browser smoke checks** passing.
+**91 engine tests** passing, **74 browser smoke checks** passing.
 
 **The paper round has now run against the real pages and it works.** First real success 2026-08-07:
 a genuine 15-row Bitcoin ETF flow scrape committed to `data/flows.json`, verified against the actual
@@ -976,10 +1042,15 @@ consistently to both value and cost, per the owner's own choice). New `src/fx.ts
 `src/holdings.ts` untouched — conversion happens entirely in a `shell.html` adapter layer before
 anything reaches the pooling engine. +8 engine tests, +6 smoke checks (83→91, 56→62).
 
-**Next up: a Discover browsing redesign**, requested the same session. All / Stocks & shares / Crypto
-top tabs, tap a row for a full detail screen (price, a real chart with 1D/1W/1M/1Y/Max ranges — no
-price chart exists anywhere in this app yet, so that's genuinely new), and an "Add to my holdings"
-button on that screen — a shortcut into the existing record-only holdings flow, explicitly NOT a real
-buy button; this app has no brokerage connection and isn't getting one. Not started as of this note.
+**Discover browsing redesign shipped 2026-08-08**, requested the same session against two reference
+screenshots. All / Stocks & shares / Crypto top tabs, All being one merged list re-ranked by the same
+evidence rather than two lists glued together (owner's choice); tap a row — from Discover OR Ratings,
+same screen either way (owner's choice) — for a full detail screen: price, the app's first real price
+chart (SVG line + gradient fill, history fetched on demand so `data/discover*.json` stays compact),
+1M/3M/1Y/Max ranges, and an "Add to my holdings" button that is a record-only shortcut into the
+existing transaction sheet, never a buy button — this app has no brokerage connection. Deliberately
+NOT offering 1D/1W despite the reference screenshots showing them: both data sources only ever return
+daily closes, and a "1D" button over daily data would imply intraday movement that was never fetched.
++12 smoke checks (62 → 74). See the section above for the full account.
 
 Update this section as you go.
