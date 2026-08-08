@@ -182,7 +182,7 @@ To put it on your phone: serve the folder over HTTP and add it to the Home Scree
 node build.ts                  # rebuild first — every check below reads the BUILT page
 npx tsc --noEmit               # typecheck
 node --test "test/*.test.ts"   # 83 engine tests
-node test/app-smoke.mjs        # 47 browser checks against the BUILT page
+node test/app-smoke.mjs        # 48 browser checks against the BUILT page
 ```
 
 Or `npm run check`, which runs all four in that order.

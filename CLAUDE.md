@@ -66,7 +66,7 @@ npm ci                         # once
 node build.ts                  # rebuild index.html — run after ANY edit to src/, entry.ts or shell.html
 npx tsc --noEmit               # typecheck (must be clean — covers tools/ too, not just the browser bundle)
 node --test "test/*.test.ts"   # 83 engine tests
-node test/app-smoke.mjs        # 47 browser checks against the BUILT page
+node test/app-smoke.mjs        # 48 browser checks against the BUILT page
 node tools/paper-round.ts --dry     # the daily flows robot, without writing anything
 node tools/discover-round.ts --dry  # the nightly market scan, without writing anything
 npm run check                  # build + typecheck + tests + smoke, in that order
@@ -617,6 +617,39 @@ invest," "time to buy," or "we recommend buying." Deliberately excluded from tha
 ("guaranteed returns" is one of the three red flags it lists) in order to warn against it, and a
 regex naive to context would fail the safety copy for containing the words it exists to warn about.
 
+## Home-screen icon (2026-08-08)
+
+`icons/` holds the app icon set, generated from a single 1254×1254 source
+(`icons/logo-source.png`, his own ChatGPT-generated design — metallic ring, bar chart, green trend
+arrow, on black) via `Image.resize(..., Image.LANCZOS)`: `apple-touch-icon.png` (180), `icon-192.png`
+/ `icon-512.png` / `icon-512-maskable.png` (Android manifest icons — the maskable copy is
+byte-identical, since the source art's own margin already serves as the safe zone a circular crop
+needs), `favicon-32.png` / `favicon-16.png`. `manifest.webmanifest` (repo root) lists the three
+manifest icons plus name/theme/background colour; `shell.html`'s `<head>` links all of it.
+
+⚠️ **GETTING THE FILE ITSELF WAS THE HARD PART, NOT THE RESIZING.** Two paths failed before one
+worked, both worth remembering for next time an asset needs pulling in from outside the repo:
+- A pasted-into-chat image has no file this environment can read — only the multimodal view of it.
+  There is no tool to export chat-attachment pixels to disk.
+- A Google Drive link failed at the network layer, not permissions: `drive.google.com` is blocked by
+  this sandbox's egress policy outright (`curl` confirmed a 403 at CONNECT, before reaching Google
+  at all — checked via `$HTTPS_PROXY/__agentproxy/status`, which logs the exact rejected host).
+- `github.com/user-attachments/...` (the URL a drag-into-issue-comment box generates) *also* failed —
+  not blocked, but funneled through a git-credential proxy that only serves
+  `repos/{owner}/{repo}/...` API paths, and returned a JSON refusal for anything else.
+- **What worked: committing the file into the repo itself** (GitHub's web UI, Add file → Upload
+  files), then `git pull`. Only the repo-scoped contents API is reachable from here — if an asset
+  needs to come from outside the repo again, that is the route, not a chat paste or a third-party
+  host.
+
+⚠️ **A SQUARE SOURCE WITH A SMALL BUILT-IN MARGIN, NOT A PRE-ROUNDED ONE.** iOS and Android each
+apply their own corner mask (a squircle and a circle respectively) to whatever square you give them;
+pre-rounding the art risks a visible double border. This source has a ~6–8% black margin around a
+panel that already carries its own metal-ring border as part of the artwork, which reads as
+intentional bezel padding under BOTH masks rather than clashing with them — verified by rendering
+actual masked previews at real icon sizes (180px squircle, 192px circle) before shipping, not by
+assuming it would look fine.
+
 ## Storage keys
 
 `mkt_watchlist_v*`, `mkt_keys_v*`, `mkt_currency_v*`, `mkt_sort_v*`, `mkt_cache_v*`, `mkt_theme_v*`,
@@ -642,7 +675,7 @@ be phrased as a recommendation to buy or sell.
 ## Current status
 
 Standing on its own since the move from Inte-Run (2026-08-06). Build clean, `tsc --noEmit` clean,
-**83 engine tests** passing, **47 browser smoke checks** passing.
+**83 engine tests** passing, **48 browser smoke checks** passing.
 
 **The paper round has now run against the real pages and it works.** First real success 2026-08-07:
 a genuine 15-row Bitcoin ETF flow scrape committed to `data/flows.json`, verified against the actual
@@ -674,5 +707,11 @@ ADHD and difficulty with long passages. Entirely static and local — no fetch, 
 that can go stale. Icons use SMIL, not CSS, animation, gated off entirely under
 `prefers-reduced-motion` (SMIL ignores `animation-play-state`, so the only real off switch is never
 emitting the tags). +10 smoke checks (37 → 47).
+
+**Home-screen icon shipped 2026-08-08** — his own logo, wired as `apple-touch-icon`, a web manifest
+with 192/512/maskable sizes, and a favicon. Getting the source file into the repo took two failed
+routes (a pasted chat image with no exportable file; a Google Drive link blocked outright by this
+sandbox's egress policy) before landing on the one that works: committed into the repo via GitHub's
+own upload UI, then `git pull`. +1 smoke check (48 total) proving the `<head>` links survive a build.
 
 Update this section as you go.

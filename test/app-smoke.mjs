@@ -143,6 +143,23 @@ await page.waitForSelector(".card", { timeout: 15000 });
 
 check("the engine bundle inlined and exposed MK", await page.evaluate(() => typeof window.MK === "object" && typeof window.MK.rateAsset === "function"));
 
+// ⚠️ THE ICON LINKS ARE EASY TO LOSE SILENTLY. Nothing else in this app depends on them, so a
+// future <head> edit that accidentally drops one would build clean, typecheck clean, and pass every
+// other check — the only way to notice is a phone screenshot showing a screenshot-icon instead of
+// the real one. Checked here once so that regression is loud instead of silent.
+const headLinks = await page.evaluate(() => ({
+  manifest: document.querySelector('link[rel="manifest"]')?.getAttribute("href") || null,
+  appleTouchIcon: document.querySelector('link[rel="apple-touch-icon"]')?.getAttribute("href") || null,
+  favicon32: document.querySelector('link[rel="icon"][sizes="32x32"]')?.getAttribute("href") || null,
+}));
+check(
+  "the home-screen icon and manifest are wired into <head>",
+  headLinks.manifest === "manifest.webmanifest" &&
+    headLinks.appleTouchIcon === "icons/apple-touch-icon.png" &&
+    headLinks.favicon32 === "icons/favicon-32.png",
+  JSON.stringify(headLinks),
+);
+
 // ⚠️ SCOPED TO #list, NOT A BARE ".card". Education's own guide cards are rendered at boot (they're
 // static, local content — no reason to lazy-load them) and reuse the `.card` class for its styling,
 // so they sit in the DOM, just hidden behind `#viewEducation`, the same trap Discover's cards already
