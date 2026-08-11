@@ -1,31 +1,31 @@
 {
- "asOf": "2026-08-10",
+ "asOf": "2026-08-11",
  "entries": [
   {
    "id": "bitcoin",
    "symbol": "BTC",
    "name": "Bitcoin",
-   "price": 64880.27715905358,
+   "price": 63907.7781642288,
    "currency": "USD",
-   "move1": 0.00011833079336809327,
-   "move30": 0.02670234707566488,
+   "move1": -0.015531259325956559,
+   "move30": -0.0031694520057398146,
    "rating": {
     "id": "bitcoin",
     "symbol": "BITCOIN",
     "name": "Bitcoin",
     "kind": "crypto",
     "stars": 2,
-    "composite": 43.696193285690605,
+    "composite": 39.65611070839193,
     "trend": {
-     "score": 36.235680424512054,
+     "score": 31.466018117034945,
      "confidence": 1,
      "reasons": [
-      "Price is 2.5% above its 50-day average.",
+      "Price is 1.0% above its 50-day average.",
       "The 50-day average sits below the 200-day — a long-term downtrend.",
-      "Three-month return +6.6%.",
-      "Six-month return -3.3%.",
+      "Three-month return +1.0%.",
+      "Six-month return -7.4%.",
       "The underlying direction over six months is down.",
-      "33.0% below its 12-month high."
+      "34.0% below its 12-month high."
      ]
     },
     "analyst": {
@@ -43,12 +43,12 @@
      ]
     },
     "network": {
-     "score": 54.88696257745841,
+     "score": 51.9412495954274,
      "confidence": 1,
      "reasons": [
-      "Network hash rate -6.6% over the last 120 days — miners are switching capacity off, which costs them money to do.",
-      "Daily transactions +14.9% over the last 120 days.",
-      "Daily active addresses +1.2% over the last 120 days.",
+      "Network hash rate -7.3% over the last 120 days — miners are switching capacity off, which costs them money to do.",
+      "Daily transactions +13.8% over the last 120 days.",
+      "Daily active addresses +0.2% over the last 120 days.",
       "Network activity describes how the chain is being used. It is not a price forecast, and a busy chain has been cheap before."
      ]
     },
@@ -61,7 +61,7 @@
     },
     "risk": {
      "band": "very-high",
-     "annualisedVol": 0.3588362474553565,
+     "annualisedVol": 0.35840460242454436,
      "maxDrawdown": 0.5304939812328708,
      "worstDay": 0.1407210198564942,
      "reasons": [
@@ -77,34 +77,34 @@
      "institutional flows"
     ]
    },
-   "deltaComposite": -0.33810577879501125,
+   "deltaComposite": -4.040082577298676,
    "isNew": false
   },
   {
    "id": "ethereum",
    "symbol": "ETH",
    "name": "Ethereum",
-   "price": 1909.9826606042302,
+   "price": 1871.4513305142882,
    "currency": "USD",
-   "move1": -0.001138319375865171,
-   "move30": 0.0947370373285854,
+   "move1": -0.022936589009148745,
+   "move30": 0.042452200091650516,
    "rating": {
     "id": "ethereum",
     "symbol": "ETHEREUM",
     "name": "Ethereum",
     "kind": "crypto",
-    "stars": 3,
-    "composite": 53.679607109986435,
+    "stars": 2,
+    "composite": 49.60098994860788,
     "trend": {
-     "score": 44.32082828820755,
+     "score": 37.21123369616379,
      "confidence": 1,
      "reasons": [
-      "Price is 6.2% above its 50-day average.",
+      "Price is 3.9% above its 50-day average.",
       "The 50-day average sits below the 200-day — a long-term downtrend.",
-      "Three-month return +21.8%.",
-      "Six-month return -11.2%.",
+      "Three-month return +10.9%.",
+      "Six-month return -15.4%.",
       "The underlying direction over six months is down.",
-      "43.0% below its 12-month high."
+      "44.2% below its 12-month high."
      ]
     },
     "analyst": {
@@ -129,17 +129,17 @@
      ]
     },
     "flows": {
-     "score": 70.52540898918839,
+     "score": 71.90255120300725,
      "confidence": 1,
      "reasons": [
-      "US spot Bitcoin ETFs took in $244m over the last trading week — about 1.5× the typical week's move since launch.",
-      "US spot Bitcoin ETFs took in $463m over the last trading month — about 1.0× the typical month's move since launch.",
+      "US spot Bitcoin ETFs took in $264m over the last trading week — about 1.6× the typical week's move since launch.",
+      "US spot Bitcoin ETFs took in $487m over the last trading month — about 1.0× the typical month's move since launch.",
       "Flows describe money that has already moved. They are not a price forecast, and heavy inflows have arrived near tops before."
      ]
     },
     "risk": {
      "band": "very-high",
-     "annualisedVol": 0.5398865775267272,
+     "annualisedVol": 0.540177947789229,
      "maxDrawdown": 0.6749511442793577,
      "worstDay": 0.14906408401127258,
      "reasons": [
@@ -155,34 +155,34 @@
      "on-chain network activity"
     ]
    },
-   "deltaComposite": 0.06910601555451024,
+   "deltaComposite": -4.078617161378553,
    "isNew": false
   },
   {
    "id": "binancecoin",
    "symbol": "BNB",
    "name": "BNB",
-   "price": 602.088117020512,
+   "price": 598.6847406725814,
    "currency": "USD",
-   "move1": 0.01739080144080174,
-   "move30": 0.059385926591501326,
+   "move1": -0.003050554691268803,
+   "move30": 0.04102500919877916,
    "rating": {
     "id": "binancecoin",
     "symbol": "BINANCECOIN",
     "name": "Binancecoin",
     "kind": "crypto",
     "stars": 2,
-    "composite": 41.72335918051443,
+    "composite": 38.67335085830469,
     "trend": {
-     "score": 41.72335918051442,
+     "score": 38.67335085830469,
      "confidence": 1,
      "reasons": [
-      "Price is 4.8% above its 50-day average.",
+      "Price is 4.2% above its 50-day average.",
       "The 50-day average sits below the 200-day — a long-term downtrend.",
-      "Three-month return +4.8%.",
-      "Six-month return -2.5%.",
+      "Three-month return -0.9%.",
+      "Six-month return -4.9%.",
       "The underlying direction over six months is down.",
-      "36.5% below its 12-month high."
+      "36.8% below its 12-month high."
      ]
     },
     "analyst": {
@@ -215,7 +215,7 @@
     },
     "risk": {
      "band": "very-high",
-     "annualisedVol": 0.44452667381763517,
+     "annualisedVol": 0.44439724163491945,
      "maxDrawdown": 0.5825955423626351,
      "worstDay": 0.12809440238168857,
      "reasons": [
@@ -232,34 +232,34 @@
      "institutional flows"
     ]
    },
-   "deltaComposite": 0.4513111179204401,
+   "deltaComposite": -3.0500083222097416,
    "isNew": false
   },
   {
    "id": "ripple",
    "symbol": "XRP",
    "name": "XRP",
-   "price": 1.0293112884930349,
+   "price": 1.0113022059787709,
    "currency": "USD",
-   "move1": 0.009205652610162707,
-   "move30": -0.05802332110019137,
+   "move1": -0.02702930510652224,
+   "move30": -0.08396984620879921,
    "rating": {
     "id": "ripple",
     "symbol": "RIPPLE",
     "name": "Ripple",
     "kind": "crypto",
     "stars": 1,
-    "composite": 12.486227643175642,
+    "composite": 8.098181703085,
     "trend": {
-     "score": 12.486227643175642,
+     "score": 8.098181703085,
      "confidence": 1,
      "reasons": [
-      "Price is 5.4% below its 50-day average.",
+      "Price is 6.9% below its 50-day average.",
       "The 50-day average sits below the 200-day — a long-term downtrend.",
-      "Three-month return -5.8%.",
-      "Six-month return -24.7%.",
+      "Three-month return -12.4%.",
+      "Six-month return -26.9%.",
       "The underlying direction over six months is down.",
-      "56.3% below its 12-month high."
+      "57.0% below its 12-month high."
      ]
     },
     "analyst": {
@@ -292,8 +292,8 @@
     },
     "risk": {
      "band": "very-high",
-     "annualisedVol": 0.5238528291812957,
-     "maxDrawdown": 0.6890192105724661,
+     "annualisedVol": 0.5244013471758738,
+     "maxDrawdown": 0.6916475134674669,
      "worstDay": 0.20062750398935336,
      "reasons": [
       "Annualised volatility 52%.",
@@ -309,34 +309,34 @@
      "institutional flows"
     ]
    },
-   "deltaComposite": -0.5482226243466748,
+   "deltaComposite": -4.388045940090642,
    "isNew": false
   },
   {
    "id": "solana",
    "symbol": "SOL",
    "name": "Solana",
-   "price": 76.26158786095073,
+   "price": 75.92547767352829,
    "currency": "USD",
-   "move1": 0.03630933293256611,
-   "move30": -0.022189461849038694,
+   "move1": -0.0005926067342338914,
+   "move30": -0.027454099273292787,
    "rating": {
     "id": "solana",
     "symbol": "SOLANA",
     "name": "Solana",
     "kind": "crypto",
     "stars": 2,
-    "composite": 45.083837221534054,
+    "composite": 40.944338112234114,
     "trend": {
-     "score": 45.083837221534054,
+     "score": 40.944338112234114,
      "confidence": 1,
      "reasons": [
-      "Price is 1.3% above its 50-day average.",
+      "Price is 0.8% above its 50-day average.",
       "The 50-day average sits below the 200-day — a long-term downtrend.",
-      "Three-month return +22.6%.",
-      "Six-month return -9.3%.",
+      "Three-month return +14.3%.",
+      "Six-month return -11.5%.",
       "The underlying direction over six months is down.",
-      "47.9% below its 12-month high."
+      "48.2% below its 12-month high."
      ]
     },
     "analyst": {
@@ -369,7 +369,7 @@
     },
     "risk": {
      "band": "very-high",
-     "annualisedVol": 0.5824554034660538,
+     "annualisedVol": 0.582141203853963,
      "maxDrawdown": 0.7488718771469888,
      "worstDay": 0.1483053586308204,
      "reasons": [
@@ -386,34 +386,34 @@
      "institutional flows"
     ]
    },
-   "deltaComposite": 2.042244592135596,
+   "deltaComposite": -4.1394991092999405,
    "isNew": false
   },
   {
    "id": "tron",
    "symbol": "TRX",
    "name": "TRON",
-   "price": 0.3295276577279161,
+   "price": 0.3305292307871675,
    "currency": "USD",
-   "move1": 0.005986033783747846,
-   "move30": -0.00736190184781671,
+   "move1": 0.004910021893967054,
+   "move30": 0.0008790743874953488,
    "rating": {
     "id": "tron",
     "symbol": "TRON",
     "name": "Tron",
     "kind": "crypto",
     "stars": 3,
-    "composite": 59.77773793058596,
+    "composite": 59.83498067545547,
     "trend": {
-     "score": 59.77773793058596,
+     "score": 59.83498067545547,
      "confidence": 1,
      "reasons": [
-      "Price is 1.0% above its 50-day average.",
+      "Price is 1.3% above its 50-day average.",
       "The 50-day average sits above the 200-day — a long-term uptrend.",
-      "Three-month return +1.7%.",
-      "Six-month return +0.7%.",
+      "Three-month return +1.2%.",
+      "Six-month return +0.9%.",
       "The underlying direction over six months is down.",
-      "12.1% below its 12-month high."
+      "11.9% below its 12-month high."
      ]
     },
     "analyst": {
@@ -446,7 +446,7 @@
     },
     "risk": {
      "band": "moderate",
-     "annualisedVol": 0.23180828222844527,
+     "annualisedVol": 0.2316918847974341,
      "maxDrawdown": 0.26518279042318493,
      "worstDay": 0.05735138014281249,
      "reasons": [
@@ -463,34 +463,34 @@
      "institutional flows"
     ]
    },
-   "deltaComposite": -0.2563742876080113,
+   "deltaComposite": 0.05724274486951231,
    "isNew": false
   },
   {
    "id": "figure-heloc",
    "symbol": "FIGR_HELOC",
    "name": "Figure Heloc",
-   "price": 1.029673037216212,
+   "price": 1.0026990373630074,
    "currency": "USD",
-   "move1": 0.011166174514273708,
-   "move30": 0.020089140618808843,
+   "move1": -0.026196665230868388,
+   "move30": -0.032033518432760366,
    "rating": {
     "id": "figure-heloc",
     "symbol": "FIGURE-HELOC",
     "name": "Figure Heloc",
     "kind": "crypto",
     "stars": 3,
-    "composite": 55.82188443241451,
+    "composite": 52.87346285351407,
     "trend": {
-     "score": 55.82188443241451,
+     "score": 52.87346285351407,
      "confidence": 1,
      "reasons": [
-      "Price is 0.6% above its 50-day average.",
+      "Price is 2.0% below its 50-day average.",
       "The 50-day average sits below the 200-day — a long-term downtrend.",
-      "Three-month return -0.5%.",
-      "Six-month return +1.4%.",
+      "Three-month return -1.5%.",
+      "Six-month return -0.0%.",
       "The underlying direction over six months is down.",
-      "1.9% below its 12-month high."
+      "4.5% below its 12-month high."
      ]
     },
     "analyst": {
@@ -523,7 +523,7 @@
     },
     "risk": {
      "band": "very-high",
-     "annualisedVol": 2.071021040956239,
+     "annualisedVol": 2.067907607087721,
      "maxDrawdown": 0.7784045503334047,
      "worstDay": 0.7657555764498449,
      "reasons": [
@@ -540,34 +540,34 @@
      "institutional flows"
     ]
    },
-   "deltaComposite": 4.196333700796245,
+   "deltaComposite": -2.9484215789004367,
    "isNew": false
   },
   {
    "id": "hyperliquid",
    "symbol": "HYPE",
    "name": "Hyperliquid",
-   "price": 53.86010442416728,
+   "price": 55.04354523576906,
    "currency": "USD",
-   "move1": -0.0037378943937491638,
-   "move30": -0.19712377054589614,
+   "move1": -0.0005814438256050991,
+   "move30": -0.1839119724330458,
    "rating": {
     "id": "hyperliquid",
     "symbol": "HYPERLIQUID",
     "name": "Hyperliquid",
     "kind": "crypto",
     "stars": 3,
-    "composite": 57.28528309168806,
+    "composite": 57.020857743002395,
     "trend": {
-     "score": 57.285283091688065,
+     "score": 57.020857743002395,
      "confidence": 1,
      "reasons": [
-      "Price is 12.9% below its 50-day average.",
+      "Price is 10.5% below its 50-day average.",
       "The 50-day average sits above the 200-day — a long-term uptrend.",
-      "Three-month return -4.8%.",
-      "Six-month return +48.0%.",
-      "Rising overall, but the path is erratic (R² 0.51) — a less reliable trend.",
-      "27.7% below its 12-month high."
+      "Three-month return -7.7%.",
+      "Six-month return +48.7%.",
+      "Rising overall, but the path is erratic (R² 0.49) — a less reliable trend.",
+      "26.1% below its 12-month high."
      ]
     },
     "analyst": {
@@ -600,7 +600,7 @@
     },
     "risk": {
      "band": "very-high",
-     "annualisedVol": 0.7823573450594877,
+     "annualisedVol": 0.7819676492571843,
      "maxDrawdown": 0.6401465893917277,
      "worstDay": 0.13606907049668338,
      "reasons": [
@@ -617,34 +617,34 @@
      "institutional flows"
     ]
    },
-   "deltaComposite": -0.4343865369780744,
+   "deltaComposite": -0.2644253486856627,
    "isNew": false
   },
   {
    "id": "dogecoin",
    "symbol": "DOGE",
    "name": "Dogecoin",
-   "price": 0.0693383500424831,
+   "price": 0.06965420967282455,
    "currency": "USD",
-   "move1": -0.0031037356473746502,
-   "move30": -0.04822098103745276,
+   "move1": -0.010396804643142854,
+   "move30": -0.05958370390214984,
    "rating": {
     "id": "dogecoin",
     "symbol": "DOGECOIN",
     "name": "Dogecoin",
     "kind": "crypto",
     "stars": 1,
-    "composite": 11.041515921173396,
+    "composite": 9.738741981383255,
     "trend": {
-     "score": 11.041515921173396,
+     "score": 9.738741981383255,
      "confidence": 1,
      "reasons": [
-      "Price is 5.4% below its 50-day average.",
+      "Price is 4.6% below its 50-day average.",
       "The 50-day average sits below the 200-day — a long-term downtrend.",
-      "Three-month return -15.3%.",
-      "Six-month return -25.0%.",
+      "Three-month return -19.2%.",
+      "Six-month return -25.2%.",
       "The underlying direction over six months is down.",
-      "54.3% below its 12-month high."
+      "54.1% below its 12-month high."
      ]
     },
     "analyst": {
@@ -677,7 +677,7 @@
     },
     "risk": {
      "band": "very-high",
-     "annualisedVol": 0.6119850549814385,
+     "annualisedVol": 0.6118234597644623,
      "maxDrawdown": 0.7611541242684592,
      "worstDay": 0.22062450400164213,
      "reasons": [
@@ -694,33 +694,33 @@
      "institutional flows"
     ]
    },
-   "deltaComposite": -2.1841358543041594,
+   "deltaComposite": -1.302773939790141,
    "isNew": false
   },
   {
    "id": "usds",
    "symbol": "USDS",
    "name": "USDS",
-   "price": 0.9999584377794049,
+   "price": 0.9997530505052488,
    "currency": "USD",
-   "move1": 0.0000952913850458259,
-   "move30": 0.00007831926826007418,
+   "move1": -0.0002418164434483394,
+   "move30": -0.0002766000093302745,
    "rating": {
     "id": "usds",
     "symbol": "USDS",
     "name": "Usds",
     "kind": "crypto",
     "stars": 2,
-    "composite": 47.56398535801273,
+    "composite": 47.838963175930154,
     "trend": {
-     "score": 47.56398535801273,
+     "score": 47.838963175930154,
      "confidence": 1,
      "reasons": [
-      "Price is 0.0% above its 50-day average.",
+      "Price is 0.0% below its 50-day average.",
       "The 50-day average sits above the 200-day — a long-term uptrend.",
-      "Three-month return +0.0%.",
-      "Six-month return +0.1%.",
-      "Rising overall, but the path is erratic (R² 0.52) — a less reliable trend.",
+      "Three-month return -0.0%.",
+      "Six-month return -0.0%.",
+      "Rising overall, but the path is erratic (R² 0.53) — a less reliable trend.",
       "0.1% below its 12-month high."
      ]
     },
@@ -754,7 +754,7 @@
     },
     "risk": {
      "band": "low",
-     "annualisedVol": 0.005522926237038285,
+     "annualisedVol": 0.005527120320847403,
      "maxDrawdown": 0.0028823421298618257,
      "worstDay": 0.002339481401924748,
      "reasons": [
@@ -771,34 +771,34 @@
      "institutional flows"
     ]
    },
-   "deltaComposite": -0.3193909312552634,
+   "deltaComposite": 0.27497781791742426,
    "isNew": false
   },
   {
    "id": "rain",
    "symbol": "RAIN",
    "name": "Rain",
-   "price": 0.012578563202060961,
+   "price": 0.012858627206503385,
    "currency": "USD",
-   "move1": -0.0106005220629799,
-   "move30": -0.12279280148482774,
+   "move1": 0.02256204055717359,
+   "move30": -0.11460020006236349,
    "rating": {
     "id": "rain",
     "symbol": "RAIN",
     "name": "Rain",
     "kind": "crypto",
     "stars": 3,
-    "composite": 63.377897737050674,
+    "composite": 63.88148307129936,
     "trend": {
-     "score": 63.377897737050674,
+     "score": 63.881483071299364,
      "confidence": 1,
      "reasons": [
-      "Price is 12.5% below its 50-day average.",
+      "Price is 10.2% below its 50-day average.",
       "The 50-day average sits above the 200-day — a long-term uptrend.",
-      "Three-month return -2.5%.",
-      "Six-month return +70.5%.",
-      "Direction has been consistent — the six-month path tracks a rising line closely (R² 0.67). That is about direction, not calmness; see risk.",
-      "21.5% below its 12-month high."
+      "Three-month return -3.1%.",
+      "Six-month return +96.4%.",
+      "Direction has been consistent — the six-month path tracks a rising line closely (R² 0.65). That is about direction, not calmness; see risk.",
+      "19.7% below its 12-month high."
      ]
     },
     "analyst": {
@@ -831,7 +831,7 @@
     },
     "risk": {
      "band": "very-high",
-     "annualisedVol": 1.072221820763121,
+     "annualisedVol": 1.0691008311686554,
      "maxDrawdown": 0.36545389375140425,
      "worstDay": 0.1462620139215376,
      "reasons": [
@@ -848,34 +848,34 @@
      "institutional flows"
     ]
    },
-   "deltaComposite": -0.21609975977457907,
+   "deltaComposite": 0.5035853342486831,
    "isNew": false
   },
   {
    "id": "leo-token",
    "symbol": "LEO",
    "name": "LEO Token",
-   "price": 9.712037508816442,
+   "price": 9.64661388044108,
    "currency": "USD",
-   "move1": -0.004470030782096068,
-   "move30": 0.01660973485282735,
+   "move1": -0.006736235046612138,
+   "move30": 0.008381725240788507,
    "rating": {
     "id": "leo-token",
     "symbol": "LEO-TOKEN",
     "name": "Leo Token",
     "kind": "crypto",
     "stars": 2,
-    "composite": 47.33468047351399,
+    "composite": 46.55289265646555,
     "trend": {
-     "score": 47.334680473513984,
+     "score": 46.55289265646555,
      "confidence": 1,
      "reasons": [
-      "Price is 1.3% above its 50-day average.",
+      "Price is 0.6% above its 50-day average.",
       "The 50-day average sits above the 200-day — a long-term uptrend.",
-      "Three-month return +2.7%.",
-      "Six-month return -4.5%.",
+      "Three-month return +2.4%.",
+      "Six-month return -6.8%.",
       "The underlying direction over six months is down.",
-      "7.9% below its 12-month high."
+      "8.5% below its 12-month high."
      ]
     },
     "analyst": {
@@ -908,7 +908,7 @@
     },
     "risk": {
      "band": "high",
-     "annualisedVol": 0.4427099095699565,
+     "annualisedVol": 0.4420370425286564,
      "maxDrawdown": 0.3124236066483791,
      "worstDay": 0.22996738123289517,
      "reasons": [
@@ -925,34 +925,34 @@
      "institutional flows"
     ]
    },
-   "deltaComposite": 0.5938374384406231,
+   "deltaComposite": -0.7817878170484391,
    "isNew": false
   },
   {
    "id": "zcash",
    "symbol": "ZEC",
    "name": "Zcash",
-   "price": 509.78047068767324,
+   "price": 495.5149082357605,
    "currency": "USD",
-   "move1": -0.00259490478029345,
-   "move30": 0.05942708605217706,
+   "move1": -0.027332433712501714,
+   "move30": -0.02568568563790874,
    "rating": {
     "id": "zcash",
     "symbol": "ZCASH",
     "name": "Zcash",
     "kind": "crypto",
     "stars": 3,
-    "composite": 78.58012443507384,
+    "composite": 65.96701119493272,
     "trend": {
-     "score": 78.58012443507384,
+     "score": 65.96701119493272,
      "confidence": 1,
      "reasons": [
-      "Price is 6.4% above its 50-day average.",
+      "Price is 3.0% above its 50-day average.",
       "The 50-day average sits above the 200-day — a long-term uptrend.",
-      "Three-month return +40.8%.",
-      "Six-month return +103.5%.",
-      "Rising overall, but the path is erratic (R² 0.21) — a less reliable trend.",
-      "24.2% below its 12-month high."
+      "Three-month return +8.1%.",
+      "Six-month return +96.5%.",
+      "Rising overall, but the path is erratic (R² 0.18) — a less reliable trend.",
+      "26.4% below its 12-month high."
      ]
     },
     "analyst": {
@@ -985,7 +985,7 @@
     },
     "risk": {
      "band": "very-high",
-     "annualisedVol": 1.2639069894399055,
+     "annualisedVol": 1.2624924779948379,
      "maxDrawdown": 0.7172912792286869,
      "worstDay": 0.26050793792691473,
      "reasons": [
@@ -1003,35 +1003,35 @@
      "institutional flows"
     ]
    },
-   "deltaComposite": -0.13519112312006598,
+   "deltaComposite": -12.613113240141118,
    "isNew": false
   },
   {
    "id": "monero",
    "symbol": "XMR",
    "name": "Monero",
-   "price": 394.3159525096364,
+   "price": 396.73358224356065,
    "currency": "USD",
-   "move1": 0.04180369479026402,
-   "move30": 0.25489819481448106,
+   "move1": 0.005757536634588112,
+   "move30": 0.22941765885119292,
    "rating": {
     "id": "monero",
     "symbol": "MONERO",
     "name": "Monero",
     "kind": "crypto",
     "stars": 3,
-    "composite": 73.41949119289556,
+    "composite": 75.16118632620459,
     "trend": {
-     "score": 73.41949119289556,
+     "score": 75.16118632620459,
      "confidence": 1,
      "reasons": [
-      "Price is 17.1% above its 50-day average.",
+      "Price is 16.9% above its 50-day average.",
       "The 50-day average sits below the 200-day — a long-term downtrend.",
-      "Three-month return +33.3%.",
-      "Six-month return +21.5%.",
+      "Three-month return +26.1%.",
+      "Six-month return +21.6%.",
       "The underlying direction over six months is down.",
-      "Stretched further above its own 50-day average than it has been 92% of this year. Scored down: a run this extended has more room to snap back than to continue.",
-      "44.1% below its 12-month high."
+      "Stretched further above its own 50-day average than it has been 91% of this year. Scored down: a run this extended has more room to snap back than to continue.",
+      "43.8% below its 12-month high."
      ]
     },
     "analyst": {
@@ -1064,7 +1064,7 @@
     },
     "risk": {
      "band": "very-high",
-     "annualisedVol": 0.7030168602326028,
+     "annualisedVol": 0.7019218554074769,
      "maxDrawdown": 0.5857125241667533,
      "worstDay": 0.22375501453338686,
      "reasons": [
@@ -1082,35 +1082,35 @@
      "institutional flows"
     ]
    },
-   "deltaComposite": 0.44373192652423654,
+   "deltaComposite": 1.7416951333090225,
    "isNew": false
   },
   {
    "id": "cardano",
    "symbol": "ADA",
    "name": "Cardano",
-   "price": 0.19460115715936696,
+   "price": 0.1898466918941088,
    "currency": "USD",
-   "move1": -0.03008516243645243,
-   "move30": 0.1690079381557259,
+   "move1": -0.02358193153328536,
+   "move30": 0.1462343902076202,
    "rating": {
     "id": "cardano",
     "symbol": "CARDANO",
     "name": "Cardano",
     "kind": "crypto",
     "stars": 1,
-    "composite": 25.964900426933404,
+    "composite": 24.23999032465626,
     "trend": {
-     "score": 25.964900426933404,
+     "score": 24.23999032465626,
      "confidence": 1,
      "reasons": [
-      "Price is 15.9% above its 50-day average.",
+      "Price is 12.2% above its 50-day average.",
       "The 50-day average sits below the 200-day — a long-term downtrend.",
-      "Three-month return +23.8%.",
-      "Six-month return -21.5%.",
+      "Three-month return +11.5%.",
+      "Six-month return -22.7%.",
       "The underlying direction over six months is down.",
-      "Stretched further above its own 50-day average than it has been 98% of this year. Scored down: a run this extended has more room to snap back than to continue.",
-      "58.6% below its 12-month high."
+      "Stretched further above its own 50-day average than it has been 97% of this year. Scored down: a run this extended has more room to snap back than to continue.",
+      "59.6% below its 12-month high."
      ]
     },
     "analyst": {
@@ -1143,7 +1143,7 @@
     },
     "risk": {
      "band": "very-high",
-     "annualisedVol": 0.6725883134553969,
+     "annualisedVol": 0.6717166844690793,
      "maxDrawdown": 0.8508594933791296,
      "worstDay": 0.2201941677693553,
      "reasons": [
@@ -1160,34 +1160,34 @@
      "institutional flows"
     ]
    },
-   "deltaComposite": 0.6413111327377052,
+   "deltaComposite": -1.7249101022771427,
    "isNew": false
   },
   {
    "id": "whitebit",
    "symbol": "WBT",
    "name": "WhiteBIT Coin",
-   "price": 56.04903564584064,
+   "price": 55.12423884897589,
    "currency": "USD",
-   "move1": -0.0011383878152458893,
-   "move30": 0.006074086263948786,
+   "move1": -0.016657621793736532,
+   "move30": -0.013648785347267989,
    "rating": {
     "id": "whitebit",
     "symbol": "WHITEBIT",
     "name": "Whitebit",
     "kind": "crypto",
     "stars": 4,
-    "composite": 74.20240655411013,
+    "composite": 69.22700616938332,
     "trend": {
-     "score": 74.20240655411013,
+     "score": 69.22700616938332,
      "confidence": 1,
      "reasons": [
-      "Price is 2.4% above its 50-day average.",
+      "Price is 0.5% above its 50-day average.",
       "The 50-day average sits above the 200-day — a long-term uptrend.",
-      "Three-month return +30.1%.",
-      "Six-month return +9.1%.",
+      "Three-month return +23.0%.",
+      "Six-month return +6.0%.",
       "The underlying direction over six months is down.",
-      "10.9% below its 12-month high."
+      "12.3% below its 12-month high."
      ]
     },
     "analyst": {
@@ -1220,7 +1220,7 @@
     },
     "risk": {
      "band": "high",
-     "annualisedVol": 0.41940487174427804,
+     "annualisedVol": 0.418943025747771,
      "maxDrawdown": 0.3147423392796207,
      "worstDay": 0.0851594141815929,
      "reasons": [
@@ -1237,34 +1237,34 @@
      "institutional flows"
     ]
    },
-   "deltaComposite": -0.17531374971949276,
+   "deltaComposite": -4.975400384726811,
    "isNew": false
   },
   {
    "id": "chainlink",
    "symbol": "LINK",
    "name": "Chainlink",
-   "price": 8.179787298984762,
+   "price": 8.295624692305784,
    "currency": "USD",
-   "move1": 0.00016895784982340345,
-   "move30": 0.058302682832724884,
+   "move1": 0.013966093554995895,
+   "move30": 0.04864091137136195,
    "rating": {
     "id": "chainlink",
     "symbol": "CHAINLINK",
     "name": "Chainlink",
     "kind": "crypto",
     "stars": 2,
-    "composite": 39.18979323504992,
+    "composite": 37.67433050929945,
     "trend": {
-     "score": 39.18979323504992,
+     "score": 37.67433050929945,
      "confidence": 1,
      "reasons": [
-      "Price is 1.8% above its 50-day average.",
+      "Price is 3.0% above its 50-day average.",
       "The 50-day average sits below the 200-day — a long-term downtrend.",
-      "Three-month return +10.7%.",
-      "Six-month return -9.7%.",
+      "Three-month return +3.8%.",
+      "Six-month return -9.6%.",
       "The underlying direction over six months is down.",
-      "44.2% below its 12-month high."
+      "43.4% below its 12-month high."
      ]
     },
     "analyst": {
@@ -1297,7 +1297,7 @@
     },
     "risk": {
      "band": "very-high",
-     "annualisedVol": 0.6490366676852657,
+     "annualisedVol": 0.6484894016189265,
      "maxDrawdown": 0.7309491157151318,
      "worstDay": 0.21146699307103,
      "reasons": [
@@ -1314,34 +1314,34 @@
      "institutional flows"
     ]
    },
-   "deltaComposite": -2.38202718133563,
+   "deltaComposite": -1.5154627257504671,
    "isNew": false
   },
   {
    "id": "stellar",
    "symbol": "XLM",
    "name": "Stellar",
-   "price": 0.16242282415561313,
+   "price": 0.16126534360311587,
    "currency": "USD",
-   "move1": 0.007399632447972593,
-   "move30": -0.12787810910080988,
+   "move1": -0.00673781273629015,
+   "move30": -0.13450084289867537,
    "rating": {
     "id": "stellar",
     "symbol": "STELLAR",
     "name": "Stellar",
     "kind": "crypto",
     "stars": 1,
-    "composite": 23.50733384385651,
+    "composite": 22.899005200580362,
     "trend": {
-     "score": 23.507333843856507,
+     "score": 22.899005200580362,
      "confidence": 1,
      "reasons": [
-      "Price is 11.6% below its 50-day average.",
+      "Price is 11.3% below its 50-day average.",
       "The 50-day average sits above the 200-day — a long-term uptrend.",
-      "Three-month return -23.5%.",
-      "Six-month return +0.3%.",
-      "Rising overall, but the path is erratic (R² 0.14) — a less reliable trend.",
-      "37.5% below its 12-month high."
+      "Three-month return -20.4%.",
+      "Six-month return +3.5%.",
+      "Rising overall, but the path is erratic (R² 0.11) — a less reliable trend.",
+      "38.0% below its 12-month high."
      ]
     },
     "analyst": {
@@ -1374,7 +1374,7 @@
     },
     "risk": {
      "band": "very-high",
-     "annualisedVol": 0.6459707493462424,
+     "annualisedVol": 0.645362027516634,
      "maxDrawdown": 0.683348442707647,
      "worstDay": 0.15716169579620165,
      "reasons": [
@@ -1391,7 +1391,7 @@
      "institutional flows"
     ]
    },
-   "deltaComposite": -1.946142548662106,
+   "deltaComposite": -0.608328643276149,
    "isNew": false
   }
  ]
