@@ -1,31 +1,31 @@
 {
- "asOf": "2026-08-11",
+ "asOf": "2026-08-12",
  "entries": [
   {
    "id": "AAPL",
    "symbol": "AAPL",
    "name": "Apple",
-   "price": 308.26001,
+   "price": 304.91,
    "currency": "USD",
-   "move1": -0.01618095988832724,
-   "move30": 0.08626404256818687,
+   "move1": -0.010867481643175192,
+   "move30": 0.08223898211964897,
    "rating": {
     "id": "AAPL",
     "symbol": "AAPL",
     "name": "Apple",
     "kind": "equity",
     "stars": 4,
-    "composite": 71.99755253938592,
+    "composite": 71.3877776843261,
     "trend": {
-     "score": 68.24370868676432,
+     "score": 67.22741726166461,
      "confidence": 1,
      "reasons": [
-      "Price is 0.5% below its 50-day average.",
+      "Price is 1.5% below its 50-day average.",
       "The 50-day average sits above the 200-day — a long-term uptrend.",
-      "Three-month return +5.1%.",
-      "Six-month return +10.8%.",
-      "Direction has been consistent — the six-month path tracks a rising line closely (R² 0.74). That is about direction, not calmness; see risk.",
-      "9.4% below its 12-month high."
+      "Three-month return +4.2%.",
+      "Six-month return +11.0%.",
+      "Direction has been consistent — the six-month path tracks a rising line closely (R² 0.75). That is about direction, not calmness; see risk.",
+      "10.3% below its 12-month high."
      ]
     },
     "analyst": {
@@ -63,7 +63,7 @@
     },
     "risk": {
      "band": "high",
-     "annualisedVol": 0.3067479194457891,
+     "annualisedVol": 0.30684534658140167,
      "maxDrawdown": 0.3022258477448059,
      "worstDay": 0.09245611684309252,
      "reasons": [
@@ -79,36 +79,36 @@
      "analyst forecasts"
     ]
    },
-   "deltaComposite": -1.8341823615104573,
+   "deltaComposite": -0.6097748550598254,
    "isNew": false
   },
   {
    "id": "MSFT",
    "symbol": "MSFT",
    "name": "Microsoft",
-   "price": 506.059998,
+   "price": 503.81,
    "currency": "USD",
-   "move1": 0.012140259047986213,
-   "move30": 0.3568383462476874,
+   "move1": -0.004446109174588431,
+   "move30": 0.3669316176864199,
    "rating": {
     "id": "MSFT",
     "symbol": "MSFT",
     "name": "Microsoft",
     "kind": "equity",
     "stars": 3,
-    "composite": 54.5159180515621,
+    "composite": 54.81935489079664,
     "trend": {
-     "score": 33.787631187037945,
+     "score": 34.29335925242883,
      "confidence": 1,
      "reasons": [
-      "Price is 23.9% above its 50-day average.",
+      "Price is 23.0% above its 50-day average.",
       "The 50-day average sits below the 200-day — a long-term downtrend.",
-      "Three-month return +21.9%.",
-      "Six-month return +26.2%.",
-      "Rising overall, but the path is erratic (R² 0.06) — a less reliable trend.",
-      "Stretched further above its own 50-day average than it has been 100% of this year. Scored down: a run this extended has more room to snap back than to continue.",
-      "RSI 79 — in overbought territory.",
-      "6.6% below its 12-month high."
+      "Three-month return +22.1%.",
+      "Six-month return +21.8%.",
+      "Rising overall, but the path is erratic (R² 0.08) — a less reliable trend.",
+      "Stretched further above its own 50-day average than it has been 99% of this year. Scored down: a run this extended has more room to snap back than to continue.",
+      "RSI 78 — in overbought territory.",
+      "7.1% below its 12-month high."
      ]
     },
     "analyst": {
@@ -146,7 +146,7 @@
     },
     "risk": {
      "band": "high",
-     "annualisedVol": 0.3029225629233693,
+     "annualisedVol": 0.3028399234484569,
      "maxDrawdown": 0.34910623084888737,
      "worstDay": 0.09993148267342145,
      "reasons": [
@@ -162,34 +162,34 @@
      "analyst forecasts"
     ]
    },
-   "deltaComposite": 0.449015274529458,
+   "deltaComposite": 0.3034368392345357,
    "isNew": false
   },
   {
    "id": "GOOGL",
    "symbol": "GOOGL",
    "name": "Alphabet",
-   "price": 357.51999,
+   "price": 343.79999,
    "currency": "USD",
-   "move1": 0.009088343468482751,
-   "move30": 0.05966382940621151,
+   "move1": -0.038375476571254175,
+   "move30": -0.02785239722472499,
    "rating": {
     "id": "GOOGL",
     "symbol": "GOOGL",
     "name": "Alphabet",
     "kind": "equity",
-    "stars": 4,
-    "composite": 67.00825180885215,
+    "stars": 3,
+    "composite": 63.96449694950769,
     "trend": {
-     "score": 50.344413675414266,
+     "score": 45.271488909840166,
      "confidence": 1,
      "reasons": [
-      "Price is 0.5% above its 50-day average.",
+      "Price is 3.2% below its 50-day average.",
       "The 50-day average sits above the 200-day — a long-term uptrend.",
-      "Three-month return -10.8%.",
-      "Six-month return +10.7%.",
+      "Three-month return -11.5%.",
+      "Six-month return +6.0%.",
       "Rising overall, but the path is erratic (R² 0.38) — a less reliable trend.",
-      "11.2% below its 12-month high."
+      "14.6% below its 12-month high."
      ]
     },
     "analyst": {
@@ -227,7 +227,7 @@
     },
     "risk": {
      "band": "high",
-     "annualisedVol": 0.32872135771477184,
+     "annualisedVol": 0.32972230188147,
      "maxDrawdown": 0.29886616920244213,
      "worstDay": 0.07292373291985654,
      "reasons": [
@@ -243,35 +243,34 @@
      "analyst forecasts"
     ]
    },
-   "deltaComposite": 0.9344206437274494,
+   "deltaComposite": -3.0437548593444603,
    "isNew": false
   },
   {
    "id": "AMZN",
    "symbol": "AMZN",
    "name": "Amazon",
-   "price": 278.089996,
+   "price": 272.26999,
    "currency": "USD",
-   "move1": 0.013152090747883483,
-   "move30": 0.19510935579526412,
+   "move1": -0.020928498269315532,
+   "move30": 0.13379691013575434,
    "rating": {
     "id": "AMZN",
     "symbol": "AMZN",
     "name": "Amazon",
     "kind": "equity",
     "stars": 4,
-    "composite": 71.81766572002836,
+    "composite": 72.58301553674833,
     "trend": {
-     "score": 65.02059401786508,
+     "score": 66.2961770457317,
      "confidence": 1,
      "reasons": [
-      "Price is 12.3% above its 50-day average.",
+      "Price is 10.0% above its 50-day average.",
       "The 50-day average sits above the 200-day — a long-term uptrend.",
-      "Three-month return +2.0%.",
-      "Six-month return +32.2%.",
+      "Three-month return +1.2%.",
+      "Six-month return +30.4%.",
       "Rising overall, but the path is erratic (R² 0.45) — a less reliable trend.",
-      "Stretched further above its own 50-day average than it has been 92% of this year. Scored down: a run this extended has more room to snap back than to continue.",
-      "2.1% below its 12-month high."
+      "4.1% below its 12-month high."
      ]
     },
     "analyst": {
@@ -309,7 +308,7 @@
     },
     "risk": {
      "band": "high",
-     "annualisedVol": 0.3509922894711982,
+     "annualisedVol": 0.3512213389839482,
      "maxDrawdown": 0.3087663745250465,
      "worstDay": 0.08979131163640741,
      "reasons": [
@@ -325,33 +324,33 @@
      "analyst forecasts"
     ]
    },
-   "deltaComposite": -0.1683919019896365,
+   "deltaComposite": 0.7653498167199757,
    "isNew": false
   },
   {
    "id": "NVDA",
    "symbol": "NVDA",
    "name": "NVIDIA",
-   "price": 217.55,
+   "price": 217.5,
    "currency": "USD",
-   "move1": -0.028621225726860766,
-   "move30": 0.12995377343790593,
+   "move1": -0.0002298322224776328,
+   "move30": 0.11555623942144955,
    "rating": {
     "id": "NVDA",
     "symbol": "NVDA",
     "name": "NVIDIA",
     "kind": "equity",
     "stars": 4,
-    "composite": 70.9199503090851,
+    "composite": 70.07433004980527,
     "trend": {
-     "score": 59.443380645271965,
+     "score": 58.03401354647225,
      "confidence": 1,
      "reasons": [
-      "Price is 5.5% above its 50-day average.",
+      "Price is 5.4% above its 50-day average.",
       "The 50-day average sits above the 200-day — a long-term uptrend.",
-      "Three-month return +1.1%.",
-      "Six-month return +17.3%.",
-      "Rising overall, but the path is erratic (R² 0.39) — a less reliable trend.",
+      "Three-month return -0.9%.",
+      "Six-month return +14.4%.",
+      "Rising overall, but the path is erratic (R² 0.40) — a less reliable trend.",
       "7.7% below its 12-month high."
      ]
     },
@@ -390,7 +389,7 @@
     },
     "risk": {
      "band": "high",
-     "annualisedVol": 0.457763760357007,
+     "annualisedVol": 0.45702137655758196,
      "maxDrawdown": 0.3688683242232701,
      "worstDay": 0.16968167157481417,
      "reasons": [
@@ -406,34 +405,34 @@
      "analyst forecasts"
     ]
    },
-   "deltaComposite": -4.672827553171587,
+   "deltaComposite": -0.8456202592798263,
    "isNew": false
   },
   {
    "id": "META",
    "symbol": "META",
    "name": "Meta Platforms",
-   "price": 594.91998,
+   "price": 599.12,
    "currency": "USD",
-   "move1": 0.00476271595052391,
-   "move30": 0.08118124488868705,
+   "move1": 0.007059806597855323,
+   "move30": 0.06491294222939725,
    "rating": {
     "id": "META",
     "symbol": "META",
     "name": "Meta Platforms",
     "kind": "equity",
     "stars": 3,
-    "composite": 58.08502088063943,
+    "composite": 59.016728721861305,
     "trend": {
-     "score": 44.93561037664129,
+     "score": 46.48845677867775,
      "confidence": 1,
      "reasons": [
-      "Price is 0.7% below its 50-day average.",
+      "Price is 0.1% above its 50-day average.",
       "The 50-day average sits below the 200-day — a long-term downtrend.",
-      "Three-month return -2.4%.",
-      "Six-month return -10.1%.",
+      "Three-month return +0.0%.",
+      "Six-month return -11.5%.",
       "The underlying direction over six months is down.",
-      "24.7% below its 12-month high."
+      "24.2% below its 12-month high."
      ]
     },
     "analyst": {
@@ -471,7 +470,7 @@
     },
     "risk": {
      "band": "high",
-     "annualisedVol": 0.3995044838082524,
+     "annualisedVol": 0.39817738186497437,
      "maxDrawdown": 0.34209345682852443,
      "worstDay": 0.11334762896876638,
      "reasons": [
@@ -487,34 +486,34 @@
      "analyst forecasts"
     ]
    },
-   "deltaComposite": 1.025838309462209,
+   "deltaComposite": 0.931707841221872,
    "isNew": false
   },
   {
    "id": "TSLA",
    "symbol": "TSLA",
    "name": "Tesla",
-   "price": 330.88,
+   "price": 332.81,
    "currency": "USD",
-   "move1": 0.006999848043089951,
-   "move30": -0.128598117737171,
+   "move1": 0.005832930367504874,
+   "move30": -0.1918949106449106,
    "rating": {
     "id": "TSLA",
     "symbol": "TSLA",
     "name": "Tesla",
     "kind": "equity",
     "stars": 1,
-    "composite": 26.83236149707631,
+    "composite": 26.61748499748714,
     "trend": {
-     "score": 24.14208397660867,
+     "score": 23.78395647729338,
      "confidence": 1,
      "reasons": [
-      "Price is 12.5% below its 50-day average.",
+      "Price is 11.5% below its 50-day average.",
       "The 50-day average sits below the 200-day — a long-term downtrend.",
-      "Three-month return -22.8%.",
-      "Six-month return -19.5%.",
+      "Three-month return -25.2%.",
+      "Six-month return -20.3%.",
       "The underlying direction over six months is down.",
-      "32.5% below its 12-month high."
+      "32.1% below its 12-month high."
      ]
     },
     "analyst": {
@@ -552,7 +551,7 @@
     },
     "risk": {
      "band": "very-high",
-     "annualisedVol": 0.5723531119405654,
+     "annualisedVol": 0.572373162873073,
      "maxDrawdown": 0.48190182616412125,
      "worstDay": 0.15426207201956554,
      "reasons": [
@@ -568,34 +567,34 @@
      "analyst forecasts"
     ]
    },
-   "deltaComposite": -0.7343112996311696,
+   "deltaComposite": -0.21487649958917032,
    "isNew": false
   },
   {
    "id": "AVGO",
    "symbol": "AVGO",
    "name": "Broadcom",
-   "price": 422.39999,
+   "price": 416.079987,
    "currency": "USD",
-   "move1": -0.012530437335645295,
-   "move30": 0.15719687340191113,
+   "move1": -0.014962128668611019,
+   "move30": 0.11714317580498923,
    "rating": {
     "id": "AVGO",
     "symbol": "AVGO",
     "name": "Broadcom",
     "kind": "equity",
     "stars": 4,
-    "composite": 69.41702119613508,
+    "composite": 67.41262215452963,
     "trend": {
-     "score": 62.880961252817734,
+     "score": 59.5402961834753,
      "confidence": 1,
      "reasons": [
-      "Price is 6.9% above its 50-day average.",
+      "Price is 5.5% above its 50-day average.",
       "The 50-day average sits above the 200-day — a long-term uptrend.",
-      "Three-month return -1.8%.",
-      "Six-month return +26.9%.",
+      "Three-month return -2.9%.",
+      "Six-month return +21.0%.",
       "Rising overall, but the path is erratic (R² 0.39) — a less reliable trend.",
-      "12.3% below its 12-month high."
+      "13.6% below its 12-month high."
      ]
     },
     "analyst": {
@@ -633,7 +632,7 @@
     },
     "risk": {
      "band": "high",
-     "annualisedVol": 0.5102098995752642,
+     "annualisedVol": 0.510239751734698,
      "maxDrawdown": 0.40216595831630575,
      "worstDay": 0.17396812423375563,
      "reasons": [
@@ -649,34 +648,34 @@
      "analyst forecasts"
     ]
    },
-   "deltaComposite": -3.6294475035158484,
+   "deltaComposite": -2.0043990416054527,
    "isNew": false
   },
   {
    "id": "ORCL",
    "symbol": "ORCL",
    "name": "Oracle",
-   "price": 151.050003,
+   "price": 145.48,
    "currency": "USD",
-   "move1": 0.027411229018875494,
-   "move30": 0.01696628963845681,
+   "move1": -0.03687522601373283,
+   "move30": -0.015430361087598876,
    "rating": {
     "id": "ORCL",
     "symbol": "ORCL",
     "name": "Oracle",
     "kind": "equity",
     "stars": 2,
-    "composite": 49.37701266123583,
+    "composite": 46.164825311827826,
     "trend": {
-     "score": 34.657123204161834,
+     "score": 29.30347762181516,
      "confidence": 1,
      "reasons": [
-      "Price is 5.1% below its 50-day average.",
+      "Price is 7.7% below its 50-day average.",
       "The 50-day average sits below the 200-day — a long-term downtrend.",
-      "Three-month return -22.9%.",
-      "Six-month return +5.8%.",
+      "Three-month return -24.9%.",
+      "Six-month return -7.1%.",
       "The underlying direction over six months is down.",
-      "54.0% below its 12-month high."
+      "55.7% below its 12-month high."
      ]
     },
     "analyst": {
@@ -714,7 +713,7 @@
     },
     "risk": {
      "band": "very-high",
-     "annualisedVol": 0.5955934891963773,
+     "annualisedVol": 0.5963255630362502,
      "maxDrawdown": 0.6497730834761699,
      "worstDay": 0.13790854368689842,
      "reasons": [
@@ -730,35 +729,35 @@
      "analyst forecasts"
     ]
    },
-   "deltaComposite": 1.2186554506346425,
+   "deltaComposite": -3.212187349408005,
    "isNew": false
   },
   {
    "id": "ADBE",
    "symbol": "ADBE",
    "name": "Adobe",
-   "price": 272.95999,
+   "price": 263.70999,
    "currency": "USD",
-   "move1": 0.029222126964372652,
-   "move30": 0.3464212992650324,
+   "move1": -0.033887750362241786,
+   "move30": 0.2774790620296983,
    "rating": {
     "id": "ADBE",
     "symbol": "ADBE",
     "name": "Adobe",
     "kind": "equity",
     "stars": 3,
-    "composite": 51.64313282692564,
+    "composite": 52.55999992755773,
     "trend": {
-     "score": 33.56972087770891,
+     "score": 35.225790670053684,
      "confidence": 1,
      "reasons": [
-      "Price is 18.5% above its 50-day average.",
+      "Price is 14.4% above its 50-day average.",
       "The 50-day average sits below the 200-day — a long-term downtrend.",
-      "Three-month return +7.9%.",
-      "Six-month return +1.7%.",
+      "Three-month return +7.1%.",
+      "Six-month return -1.2%.",
       "The underlying direction over six months is down.",
-      "Stretched further above its own 50-day average than it has been 100% of this year. Scored down: a run this extended has more room to snap back than to continue.",
-      "25.7% below its 12-month high."
+      "Stretched further above its own 50-day average than it has been 99% of this year. Scored down: a run this extended has more room to snap back than to continue.",
+      "28.2% below its 12-month high."
      ]
     },
     "analyst": {
@@ -769,7 +768,7 @@
      ]
     },
     "fundamentals": {
-     "score": 78.75325075075074,
+     "score": 78.56131381381381,
      "confidence": 1,
      "reasons": [
       "Revenue +11.5% year on year.",
@@ -777,7 +776,7 @@
       "Net margin 28.7%.",
       "Return on equity 62.4%.",
       "Debt to equity 0.58×.",
-      "Price/earnings 14.6×."
+      "Price/earnings 15.0×."
      ]
     },
     "network": {
@@ -796,7 +795,7 @@
     },
     "risk": {
      "band": "very-high",
-     "annualisedVol": 0.3690608459059665,
+     "annualisedVol": 0.3700043533757741,
      "maxDrawdown": 0.5832668889544912,
      "worstDay": 0.13853171138778597,
      "reasons": [
@@ -812,32 +811,32 @@
      "analyst forecasts"
     ]
    },
-   "deltaComposite": 2.177648747626016,
+   "deltaComposite": 0.9168671006320963,
    "isNew": false
   },
   {
    "id": "CRM",
    "symbol": "CRM",
    "name": "Salesforce",
-   "price": 197.50999,
+   "price": 197.47,
    "currency": "USD",
-   "move1": 0.02474826062320945,
-   "move30": 0.24714270379491055,
+   "move1": -0.00020247077122526047,
+   "move30": 0.2503641645263195,
    "rating": {
     "id": "CRM",
     "symbol": "CRM",
     "name": "Salesforce",
     "kind": "equity",
     "stars": 2,
-    "composite": 48.1584852021224,
+    "composite": 49.549403165961586,
     "trend": {
-     "score": 33.840027889423226,
+     "score": 36.158224495821855,
      "confidence": 1,
      "reasons": [
-      "Price is 14.4% above its 50-day average.",
+      "Price is 14.3% above its 50-day average.",
       "The 50-day average sits below the 200-day — a long-term downtrend.",
-      "Three-month return +8.6%.",
-      "Six-month return +3.2%.",
+      "Three-month return +11.3%.",
+      "Six-month return +1.8%.",
       "The underlying direction over six months is down.",
       "Stretched further above its own 50-day average than it has been 99% of this year. Scored down: a run this extended has more room to snap back than to continue.",
       "25.8% below its 12-month high."
@@ -878,7 +877,7 @@
     },
     "risk": {
      "band": "very-high",
-     "annualisedVol": 0.38287954768840887,
+     "annualisedVol": 0.3828522938636987,
      "maxDrawdown": 0.5829420868747858,
      "worstDay": 0.08693361433087465,
      "reasons": [
@@ -894,34 +893,34 @@
      "analyst forecasts"
     ]
    },
-   "deltaComposite": 1.7164078057029712,
+   "deltaComposite": 1.3909179638391862,
    "isNew": false
   },
   {
    "id": "CSCO",
    "symbol": "CSCO",
    "name": "Cisco",
-   "price": 122.57,
+   "price": 120.43,
    "currency": "USD",
-   "move1": 0.00938812484559004,
-   "move30": 0.0773490375318624,
+   "move1": -0.0174594109488454,
+   "move30": 0.023194562446898992,
    "rating": {
     "id": "CSCO",
     "symbol": "CSCO",
     "name": "Cisco",
     "kind": "equity",
     "stars": 5,
-    "composite": 80.87701467150396,
+    "composite": 78.02499042642695,
     "trend": {
-     "score": 90.38639081887297,
+     "score": 85.63301707707797,
      "confidence": 1,
      "reasons": [
-      "Price is 3.9% above its 50-day average.",
+      "Price is 2.1% above its 50-day average.",
       "The 50-day average sits above the 200-day — a long-term uptrend.",
-      "Three-month return +26.9%.",
-      "Six-month return +44.5%.",
-      "Direction has been consistent — the six-month path tracks a rising line closely (R² 0.79). That is about direction, not calmness; see risk.",
-      "5.7% below its 12-month high."
+      "Three-month return +22.0%.",
+      "Six-month return +38.8%.",
+      "Direction has been consistent — the six-month path tracks a rising line closely (R² 0.80). That is about direction, not calmness; see risk.",
+      "7.4% below its 12-month high."
      ]
     },
     "analyst": {
@@ -959,7 +958,7 @@
     },
     "risk": {
      "band": "moderate",
-     "annualisedVol": 0.3036873250841967,
+     "annualisedVol": 0.30406902838856026,
      "maxDrawdown": 0.1800524125173425,
      "worstDay": 0.1232172083235914,
      "reasons": [
@@ -975,34 +974,34 @@
      "analyst forecasts"
     ]
    },
-   "deltaComposite": -0.7024848215688166,
+   "deltaComposite": -2.852024245077004,
    "isNew": false
   },
   {
    "id": "INTC",
    "symbol": "INTC",
    "name": "Intel",
-   "price": 97.52,
+   "price": 97.71,
    "currency": "USD",
-   "move1": -0.040629611411706956,
-   "move30": -0.240024996880845,
+   "move1": 0.0019483182936832488,
+   "move30": -0.2581992104464015,
    "rating": {
     "id": "INTC",
     "symbol": "INTC",
     "name": "Intel",
     "kind": "equity",
     "stars": 2,
-    "composite": 46.47688484268311,
+    "composite": 46.56011333760603,
     "trend": {
-     "score": 57.074252515582955,
+     "score": 57.21296667378783,
      "confidence": 1,
      "reasons": [
-      "Price is 11.5% below its 50-day average.",
+      "Price is 11.0% below its 50-day average.",
       "The 50-day average sits above the 200-day — a long-term uptrend.",
-      "Three-month return -21.9%.",
-      "Six-month return +92.8%.",
-      "Direction has been consistent — the six-month path tracks a rising line closely (R² 0.68). That is about direction, not calmness; see risk.",
-      "30.8% below its 12-month high."
+      "Three-month return -24.5%.",
+      "Six-month return +94.5%.",
+      "Direction has been consistent — the six-month path tracks a rising line closely (R² 0.67). That is about direction, not calmness; see risk.",
+      "30.7% below its 12-month high."
      ]
     },
     "analyst": {
@@ -1038,7 +1037,7 @@
     },
     "risk": {
      "band": "very-high",
-     "annualisedVol": 0.7271334343882468,
+     "annualisedVol": 0.7265034540944253,
      "maxDrawdown": 0.4190435646374344,
      "worstDay": 0.1702871870397643,
      "reasons": [
@@ -1054,34 +1053,34 @@
      "analyst forecasts"
     ]
    },
-   "deltaComposite": -4.866625126018931,
+   "deltaComposite": 0.0832284949229205,
    "isNew": false
   },
   {
    "id": "AMD",
    "symbol": "AMD",
    "name": "Advanced Micro Devices",
-   "price": 469.56,
+   "price": 474.32001,
    "currency": "USD",
-   "move1": -0.028550128859444857,
-   "move30": -0.09973545382355709,
+   "move1": 0.010137170968566256,
+   "move30": -0.12079923855491737,
    "rating": {
     "id": "AMD",
     "symbol": "AMD",
     "name": "Advanced Micro Devices",
     "kind": "equity",
     "stars": 3,
-    "composite": 70.04699808272348,
+    "composite": 70.64096199900582,
     "trend": {
-     "score": 72.18944124898357,
+     "score": 73.17938110945417,
      "confidence": 1,
      "reasons": [
-      "Price is 8.5% below its 50-day average.",
+      "Price is 7.4% below its 50-day average.",
       "The 50-day average sits above the 200-day — a long-term uptrend.",
-      "Three-month return +3.2%.",
-      "Six-month return +125.3%.",
+      "Three-month return +3.4%.",
+      "Six-month return +119.6%.",
       "Direction has been consistent — the six-month path tracks a rising line closely (R² 0.84). That is about direction, not calmness; see risk.",
-      "19.2% below its 12-month high."
+      "18.3% below its 12-month high."
      ]
     },
     "analyst": {
@@ -1119,7 +1118,7 @@
     },
     "risk": {
      "band": "very-high",
-     "annualisedVol": 0.6566426056660837,
+     "annualisedVol": 0.6562447763264193,
      "maxDrawdown": 0.3962948668467774,
      "worstDay": 0.17314443847837768,
      "reasons": [
@@ -1136,34 +1135,34 @@
      "analyst forecasts"
     ]
    },
-   "deltaComposite": -4.917569575874239,
+   "deltaComposite": 0.5939639162823482,
    "isNew": false
   },
   {
    "id": "IBM",
    "symbol": "IBM",
    "name": "IBM",
-   "price": 236.31,
+   "price": 238.42,
    "currency": "USD",
-   "move1": -0.0040879973027646566,
-   "move30": -0.13002981997570218,
+   "move1": 0.00892894926156318,
+   "move30": -0.14237410071942447,
    "rating": {
     "id": "IBM",
     "symbol": "IBM",
     "name": "IBM",
     "kind": "equity",
     "stars": 3,
-    "composite": 51.53603842065487,
+    "composite": 53.06730336253205,
     "trend": {
-     "score": 40.3050890594498,
+     "score": 42.85719729591178,
      "confidence": 1,
      "reasons": [
-      "Price is 8.6% below its 50-day average.",
+      "Price is 7.3% below its 50-day average.",
       "The 50-day average sits below the 200-day — a long-term downtrend.",
-      "Three-month return +2.9%.",
-      "Six-month return -20.9%.",
+      "Three-month return +6.7%.",
+      "Six-month return -19.5%.",
       "The underlying direction over six months is down.",
-      "28.2% below its 12-month high."
+      "27.6% below its 12-month high."
      ]
     },
     "analyst": {
@@ -1201,7 +1200,7 @@
     },
     "risk": {
      "band": "high",
-     "annualisedVol": 0.44685403148801683,
+     "annualisedVol": 0.44690800772363554,
      "maxDrawdown": 0.3749962222459611,
      "worstDay": 0.25207594142314915,
      "reasons": [
@@ -1217,34 +1216,34 @@
      "analyst forecasts"
     ]
    },
-   "deltaComposite": -0.520321905967009,
+   "deltaComposite": 1.5312649418771827,
    "isNew": false
   },
   {
    "id": "QCOM",
    "symbol": "QCOM",
    "name": "Qualcomm",
-   "price": 162.17,
+   "price": 162.67999,
    "currency": "USD",
-   "move1": -0.033897295365185376,
-   "move30": -0.14372458947146105,
+   "move1": 0.003144786335327332,
+   "move30": -0.1379822488342518,
    "rating": {
     "id": "QCOM",
     "symbol": "QCOM",
     "name": "Qualcomm",
     "kind": "equity",
     "stars": 2,
-    "composite": 47.40197337182426,
+    "composite": 47.03391775823493,
     "trend": {
-     "score": 39.016952616704096,
+     "score": 38.4035265940552,
      "confidence": 1,
      "reasons": [
-      "Price is 14.7% below its 50-day average.",
+      "Price is 13.6% below its 50-day average.",
       "The 50-day average sits above the 200-day — a long-term uptrend.",
-      "Three-month return -26.0%.",
-      "Six-month return +18.1%.",
-      "Rising overall, but the path is erratic (R² 0.34) — a less reliable trend.",
-      "35.4% below its 12-month high."
+      "Three-month return -31.5%.",
+      "Six-month return +17.1%.",
+      "Rising overall, but the path is erratic (R² 0.33) — a less reliable trend.",
+      "35.2% below its 12-month high."
      ]
     },
     "analyst": {
@@ -1282,7 +1281,7 @@
     },
     "risk": {
      "band": "high",
-     "annualisedVol": 0.4835831652769948,
+     "annualisedVol": 0.4834844310126675,
      "maxDrawdown": 0.4119592158081552,
      "worstDay": 0.1145960510251337,
      "reasons": [
@@ -1298,33 +1297,34 @@
      "analyst forecasts"
     ]
    },
-   "deltaComposite": -1.668643587502217,
+   "deltaComposite": -0.36805561358933403,
    "isNew": false
   },
   {
    "id": "JPM",
    "symbol": "JPM",
    "name": "JPMorgan Chase",
-   "price": 359.79001,
+   "price": 362.040009,
    "currency": "USD",
-   "move1": 0.006349351262848302,
-   "move30": 0.09342052308477822,
+   "move1": 0.006253645008097886,
+   "move30": 0.09912261455652516,
    "rating": {
     "id": "JPM",
     "symbol": "JPM",
     "name": "JPMorgan Chase",
     "kind": "equity",
     "stars": 4,
-    "composite": 73.35988631107756,
+    "composite": 73.94822451427343,
     "trend": {
-     "score": 74.85785856651066,
+     "score": 75.8384222385038,
      "confidence": 1,
      "reasons": [
-      "Price is 7.6% above its 50-day average.",
+      "Price is 7.9% above its 50-day average.",
       "The 50-day average sits above the 200-day — a long-term uptrend.",
-      "Three-month return +19.1%.",
-      "Six-month return +11.6%.",
-      "Direction has been consistent — the six-month path tracks a rising line closely (R² 0.65). That is about direction, not calmness; see risk.",
+      "Three-month return +20.7%.",
+      "Six-month return +12.4%.",
+      "Direction has been consistent — the six-month path tracks a rising line closely (R² 0.69). That is about direction, not calmness; see risk.",
+      "Stretched further above its own 50-day average than it has been 91% of this year. Scored down: a run this extended has more room to snap back than to continue.",
       "Sitting at its 12-month high."
      ]
     },
@@ -1363,7 +1363,7 @@
     },
     "risk": {
      "band": "moderate",
-     "annualisedVol": 0.2463870003908583,
+     "annualisedVol": 0.24626555777019793,
      "maxDrawdown": 0.2488658957361709,
      "worstDay": 0.08050198959289867,
      "reasons": [
@@ -1379,33 +1379,33 @@
      "analyst forecasts"
     ]
    },
-   "deltaComposite": 0.9235021872191425,
+   "deltaComposite": 0.5883382031958746,
    "isNew": false
   },
   {
    "id": "BAC",
    "symbol": "BAC",
    "name": "Bank of America",
-   "price": 63.86,
+   "price": 64,
    "currency": "USD",
-   "move1": 0.010922906442931701,
-   "move30": 0.10331720801658606,
+   "move1": 0.0021922956467272936,
+   "move30": 0.10573600552868001,
    "rating": {
     "id": "BAC",
     "symbol": "BAC",
     "name": "Bank of America",
     "kind": "equity",
-    "stars": 4,
-    "composite": 77.53927085886717,
+    "stars": 5,
+    "composite": 78.85747673824471,
     "trend": {
-     "score": 80.47299897899283,
+     "score": 82.6700087779554,
      "confidence": 1,
      "reasons": [
-      "Price is 8.9% above its 50-day average.",
+      "Price is 8.7% above its 50-day average.",
       "The 50-day average sits above the 200-day — a long-term uptrend.",
-      "Three-month return +24.5%.",
-      "Six-month return +13.0%.",
-      "Direction has been consistent — the six-month path tracks a rising line closely (R² 0.65). That is about direction, not calmness; see risk.",
+      "Three-month return +26.6%.",
+      "Six-month return +13.5%.",
+      "Direction has been consistent — the six-month path tracks a rising line closely (R² 0.69). That is about direction, not calmness; see risk.",
       "Sitting at its 12-month high."
      ]
     },
@@ -1444,7 +1444,7 @@
     },
     "risk": {
      "band": "moderate",
-     "annualisedVol": 0.2564164973230643,
+     "annualisedVol": 0.256234608288137,
      "maxDrawdown": 0.2796397151235861,
      "worstDay": 0.11063321385902036,
      "reasons": [
@@ -1460,34 +1460,34 @@
      "analyst forecasts"
     ]
    },
-   "deltaComposite": 2.02915051069283,
+   "deltaComposite": 1.318205879377544,
    "isNew": false
   },
   {
    "id": "WFC",
    "symbol": "WFC",
    "name": "Wells Fargo",
-   "price": 87.52,
+   "price": 87.45,
    "currency": "USD",
-   "move1": 0.0030945558739254864,
-   "move30": 0.04364416885284994,
+   "move1": -0.0007998171846433921,
+   "move30": 0.04717997844569499,
    "rating": {
     "id": "WFC",
     "symbol": "WFC",
     "name": "Wells Fargo",
     "kind": "equity",
     "stars": 3,
-    "composite": 52.99076711722569,
+    "composite": 53.60578268872854,
     "trend": {
-     "score": 42.61637486504583,
+     "score": 43.641400817550576,
      "confidence": 1,
      "reasons": [
-      "Price is 3.2% above its 50-day average.",
-      "The 50-day average sits below the 200-day — a long-term downtrend.",
-      "Three-month return +15.7%.",
-      "Six-month return -6.9%.",
-      "Rising overall, but the path is erratic (R² 0.06) — a less reliable trend.",
-      "9.2% below its 12-month high."
+      "Price is 2.9% above its 50-day average.",
+      "The 50-day average sits above the 200-day — a long-term uptrend.",
+      "Three-month return +18.9%.",
+      "Six-month return -7.6%.",
+      "Rising overall, but the path is erratic (R² 0.09) — a less reliable trend.",
+      "9.3% below its 12-month high."
      ]
     },
     "analyst": {
@@ -1525,7 +1525,7 @@
     },
     "risk": {
      "band": "moderate",
-     "annualisedVol": 0.28923013845440726,
+     "annualisedVol": 0.289132220194383,
      "maxDrawdown": 0.25104396954065344,
      "worstDay": 0.09119845004151683,
      "reasons": [
@@ -1541,33 +1541,33 @@
      "analyst forecasts"
     ]
    },
-   "deltaComposite": 1.2580386232836531,
+   "deltaComposite": 0.6150155715028518,
    "isNew": false
   },
   {
    "id": "GS",
    "symbol": "GS",
    "name": "Goldman Sachs",
-   "price": 1034.51001,
+   "price": 1034.41003,
    "currency": "USD",
-   "move1": -0.00490566659521996,
-   "move30": 0.014613450384102222,
+   "move1": -0.00009664478741966409,
+   "move30": 0.013918712541168832,
    "rating": {
     "id": "GS",
     "symbol": "GS",
     "name": "Goldman Sachs",
     "kind": "equity",
     "stars": 3,
-    "composite": 63.92825719854452,
+    "composite": 63.62126322954165,
     "trend": {
-     "score": 67.51784608165829,
+     "score": 67.0061894666535,
      "confidence": 1,
      "reasons": [
-      "Price is 1.9% below its 50-day average.",
+      "Price is 2.0% below its 50-day average.",
       "The 50-day average sits above the 200-day — a long-term uptrend.",
-      "Three-month return +10.5%.",
-      "Six-month return +11.4%.",
-      "Direction has been consistent — the six-month path tracks a rising line closely (R² 0.68). That is about direction, not calmness; see risk.",
+      "Three-month return +9.5%.",
+      "Six-month return +9.6%.",
+      "Direction has been consistent — the six-month path tracks a rising line closely (R² 0.69). That is about direction, not calmness; see risk.",
       "10.2% below its 12-month high."
      ]
     },
@@ -1606,7 +1606,7 @@
     },
     "risk": {
      "band": "high",
-     "annualisedVol": 0.3301547496006614,
+     "annualisedVol": 0.33014041760329693,
      "maxDrawdown": 0.3123670390812122,
      "worstDay": 0.09211502079694633,
      "reasons": [
@@ -1622,34 +1622,34 @@
      "analyst forecasts"
     ]
    },
-   "deltaComposite": -1.309297764987896,
+   "deltaComposite": -0.3069939690028747,
    "isNew": false
   },
   {
    "id": "MS",
    "symbol": "MS",
    "name": "Morgan Stanley",
-   "price": 215.33,
+   "price": 215.070007,
    "currency": "USD",
-   "move1": -0.004622567373919528,
-   "move30": 0.01556384009604228,
+   "move1": -0.0012074165234756684,
+   "move30": 0.015822817872662043,
    "rating": {
     "id": "MS",
     "symbol": "MS",
     "name": "Morgan Stanley",
     "kind": "equity",
     "stars": 4,
-    "composite": 69.31272974673482,
+    "composite": 69.20945756436497,
     "trend": {
-     "score": 74.72599101933281,
+     "score": 74.55387071538307,
      "confidence": 1,
      "reasons": [
-      "Price is 0.4% below its 50-day average.",
+      "Price is 0.5% below its 50-day average.",
       "The 50-day average sits above the 200-day — a long-term uptrend.",
-      "Three-month return +11.5%.",
-      "Six-month return +19.7%.",
-      "Direction has been consistent — the six-month path tracks a rising line closely (R² 0.80). That is about direction, not calmness; see risk.",
-      "5.8% below its 12-month high."
+      "Three-month return +12.5%.",
+      "Six-month return +17.9%.",
+      "Direction has been consistent — the six-month path tracks a rising line closely (R² 0.81). That is about direction, not calmness; see risk.",
+      "5.9% below its 12-month high."
      ]
     },
     "analyst": {
@@ -1687,7 +1687,7 @@
     },
     "risk": {
      "band": "moderate",
-     "annualisedVol": 0.3107150887388782,
+     "annualisedVol": 0.3103180002501746,
      "maxDrawdown": 0.2923873080183257,
      "worstDay": 0.09507839356082826,
      "reasons": [
@@ -1703,34 +1703,34 @@
      "analyst forecasts"
     ]
    },
-   "deltaComposite": -1.2413160990461023,
+   "deltaComposite": -0.10327218236984947,
    "isNew": false
   },
   {
    "id": "V",
    "symbol": "V",
    "name": "Visa",
-   "price": 361.32001,
+   "price": 362.82001,
    "currency": "USD",
-   "move1": -0.003255144827586154,
-   "move30": 0.07462153660822857,
+   "move1": 0.004151444587859876,
+   "move30": 0.06196405859692855,
    "rating": {
     "id": "V",
     "symbol": "V",
     "name": "Visa",
     "kind": "equity",
     "stars": 4,
-    "composite": 69.65946889936556,
+    "composite": 70.31042624083284,
     "trend": {
-     "score": 66.91008580324691,
+     "score": 67.99501470569237,
      "confidence": 1,
      "reasons": [
-      "Price is 4.7% above its 50-day average.",
+      "Price is 4.9% above its 50-day average.",
       "The 50-day average sits above the 200-day — a long-term uptrend.",
-      "Three-month return +13.3%.",
-      "Six-month return +9.0%.",
-      "Direction has been consistent — the six-month path tracks a rising line closely (R² 0.65). That is about direction, not calmness; see risk.",
-      "2.5% below its 12-month high."
+      "Three-month return +12.0%.",
+      "Six-month return +11.4%.",
+      "Direction has been consistent — the six-month path tracks a rising line closely (R² 0.67). That is about direction, not calmness; see risk.",
+      "2.1% below its 12-month high."
      ]
     },
     "analyst": {
@@ -1768,7 +1768,7 @@
     },
     "risk": {
      "band": "moderate",
-     "annualisedVol": 0.23075241773225785,
+     "annualisedVol": 0.23071739722120493,
      "maxDrawdown": 0.208379121909405,
      "worstDay": 0.07737413956291761,
      "reasons": [
@@ -1784,35 +1784,35 @@
      "analyst forecasts"
     ]
    },
-   "deltaComposite": 0.30497111305716373,
+   "deltaComposite": 0.6509573414672758,
    "isNew": false
   },
   {
    "id": "MA",
    "symbol": "MA",
    "name": "Mastercard",
-   "price": 563.16998,
+   "price": 561.44,
    "currency": "USD",
-   "move1": 0.00039074517469139813,
-   "move30": 0.12855194664356429,
+   "move1": -0.0030718611812369234,
+   "move30": 0.10164035198099941,
    "rating": {
     "id": "MA",
     "symbol": "MA",
     "name": "Mastercard",
     "kind": "equity",
-    "stars": 2,
-    "composite": 49.09858617499318,
+    "stars": 3,
+    "composite": 51.800955815999146,
     "trend": {
-     "score": 38.38646244380744,
+     "score": 42.890411845484046,
      "confidence": 1,
      "reasons": [
-      "Price is 7.7% above its 50-day average.",
+      "Price is 7.1% above its 50-day average.",
       "The 50-day average sits below the 200-day — a long-term downtrend.",
-      "Three-month return +13.7%.",
-      "Six-month return +2.6%.",
-      "Rising overall, but the path is erratic (R² 0.13) — a less reliable trend.",
-      "Stretched further above its own 50-day average than it has been 94% of this year. Scored down: a run this extended has more room to snap back than to continue.",
-      "6.0% below its 12-month high."
+      "Three-month return +12.8%.",
+      "Six-month return +4.9%.",
+      "Rising overall, but the path is erratic (R² 0.16) — a less reliable trend.",
+      "Stretched further above its own 50-day average than it has been 93% of this year. Scored down: a run this extended has more room to snap back than to continue.",
+      "6.3% below its 12-month high."
      ]
     },
     "analyst": {
@@ -1850,7 +1850,7 @@
     },
     "risk": {
      "band": "moderate",
-     "annualisedVol": 0.23605332253066857,
+     "annualisedVol": 0.23561012862964995,
      "maxDrawdown": 0.2127187554187674,
      "worstDay": 0.07686363352867087,
      "reasons": [
@@ -1866,34 +1866,34 @@
      "analyst forecasts"
     ]
    },
-   "deltaComposite": 2.1318879769512407,
+   "deltaComposite": 2.7023696410059657,
    "isNew": false
   },
   {
    "id": "AXP",
    "symbol": "AXP",
    "name": "American Express",
-   "price": 338.85999,
+   "price": 340.81,
    "currency": "USD",
-   "move1": -0.006013346631075778,
-   "move30": -0.004407098495919026,
+   "move1": 0.005754618596311767,
+   "move30": -0.00020535085660644548,
    "rating": {
     "id": "AXP",
     "symbol": "AXP",
     "name": "American Express",
     "kind": "equity",
     "stars": 2,
-    "composite": 46.52752660534312,
+    "composite": 48.08569906234808,
     "trend": {
-     "score": 40.20109789579208,
+     "score": 42.79805199080033,
      "confidence": 1,
      "reasons": [
-      "Price is 0.4% above its 50-day average.",
+      "Price is 0.9% above its 50-day average.",
       "The 50-day average sits below the 200-day — a long-term downtrend.",
-      "Three-month return +7.2%.",
-      "Six-month return -5.6%.",
-      "Rising overall, but the path is erratic (R² 0.22) — a less reliable trend.",
-      "12.0% below its 12-month high."
+      "Three-month return +9.1%.",
+      "Six-month return -5.2%.",
+      "Rising overall, but the path is erratic (R² 0.27) — a less reliable trend.",
+      "11.5% below its 12-month high."
      ]
     },
     "analyst": {
@@ -1931,7 +1931,7 @@
     },
     "risk": {
      "band": "moderate",
-     "annualisedVol": 0.3047330716180769,
+     "annualisedVol": 0.3047450423956956,
      "maxDrawdown": 0.2899315678031117,
      "worstDay": 0.09965482288828342,
      "reasons": [
@@ -1947,35 +1947,35 @@
      "analyst forecasts"
     ]
    },
-   "deltaComposite": 0.13507488279020663,
+   "deltaComposite": 1.5581724570049573,
    "isNew": false
   },
   {
    "id": "BLK",
    "symbol": "BLK",
    "name": "BlackRock",
-   "price": 1131.40002,
+   "price": 1148.83997,
    "currency": "USD",
-   "move1": -0.004391089288086958,
-   "move30": 0.17278767354360025,
+   "move1": 0.015414486204446076,
+   "move30": 0.20908889375772532,
    "rating": {
     "id": "BLK",
     "symbol": "BLK",
     "name": "BlackRock",
     "kind": "equity",
-    "stars": 3,
-    "composite": 50.500162658227225,
+    "stars": 2,
+    "composite": 44.17974619414803,
     "trend": {
-     "score": 40.00227810405238,
+     "score": 29.46825066392039,
      "confidence": 1,
      "reasons": [
-      "Price is 8.6% above its 50-day average.",
+      "Price is 10.1% above its 50-day average.",
       "The 50-day average sits below the 200-day — a long-term downtrend.",
-      "Three-month return +4.3%.",
-      "Six-month return +7.1%.",
-      "Rising overall, but the path is erratic (R² 0.06) — a less reliable trend.",
-      "Stretched further above its own 50-day average than it has been 92% of this year. Scored down: a run this extended has more room to snap back than to continue.",
-      "5.9% below its 12-month high."
+      "Three-month return +6.2%.",
+      "Six-month return +6.4%.",
+      "Rising overall, but the path is erratic (R² 0.08) — a less reliable trend.",
+      "Stretched further above its own 50-day average than it has been 98% of this year. Scored down: a run this extended has more room to snap back than to continue.",
+      "4.5% below its 12-month high."
      ]
     },
     "analyst": {
@@ -2013,7 +2013,7 @@
     },
     "risk": {
      "band": "moderate",
-     "annualisedVol": 0.28882767402753934,
+     "annualisedVol": 0.2890000895267277,
      "maxDrawdown": 0.24154349604834957,
      "worstDay": 0.07713341895325354,
      "reasons": [
@@ -2029,34 +2029,34 @@
      "analyst forecasts"
     ]
    },
-   "deltaComposite": 3.364802748215226,
+   "deltaComposite": -6.320416464079194,
    "isNew": false
   },
   {
    "id": "UNH",
    "symbol": "UNH",
    "name": "UnitedHealth Group",
-   "price": 408.73999,
+   "price": 402.19,
    "currency": "USD",
-   "move1": 0.0040778300408070844,
-   "move30": -0.04475453867221635,
+   "move1": -0.01602483280385647,
+   "move30": -0.041994210804768506,
    "rating": {
     "id": "UNH",
     "symbol": "UNH",
     "name": "UnitedHealth Group",
     "kind": "equity",
     "stars": 3,
-    "composite": 63.40414359645066,
+    "composite": 61.57191121310959,
     "trend": {
-     "score": 79.54070979788823,
+     "score": 76.48698915898645,
      "confidence": 1,
      "reasons": [
-      "Price is 1.1% below its 50-day average.",
+      "Price is 2.8% below its 50-day average.",
       "The 50-day average sits above the 200-day — a long-term uptrend.",
-      "Three-month return +7.6%.",
-      "Six-month return +47.7%.",
-      "Direction has been consistent — the six-month path tracks a rising line closely (R² 0.86). That is about direction, not calmness; see risk.",
-      "6.3% below its 12-month high."
+      "Three-month return +4.6%.",
+      "Six-month return +45.9%.",
+      "Direction has been consistent — the six-month path tracks a rising line closely (R² 0.85). That is about direction, not calmness; see risk.",
+      "7.8% below its 12-month high."
      ]
     },
     "analyst": {
@@ -2094,7 +2094,7 @@
     },
     "risk": {
      "band": "very-high",
-     "annualisedVol": 0.4686618000816159,
+     "annualisedVol": 0.4688229615091702,
      "maxDrawdown": 0.6033662870552131,
      "worstDay": 0.2237966513802926,
      "reasons": [
@@ -2110,34 +2110,34 @@
      "analyst forecasts"
     ]
    },
-   "deltaComposite": -0.842111795150096,
+   "deltaComposite": -1.832232383341072,
    "isNew": false
   },
   {
    "id": "JNJ",
    "symbol": "JNJ",
    "name": "Johnson & Johnson",
-   "price": 261.81,
+   "price": 259.79999,
    "currency": "USD",
-   "move1": 0.009913632537942973,
-   "move30": 0.02807665122123626,
+   "move1": -0.00767736144532305,
+   "move30": 0.004990058218635074,
    "rating": {
     "id": "JNJ",
     "symbol": "JNJ",
     "name": "Johnson & Johnson",
     "kind": "equity",
     "stars": 3,
-    "composite": 59.39878917121779,
+    "composite": 58.86432478151414,
     "trend": {
-     "score": 59.34413310318081,
+     "score": 58.4533591203414,
      "confidence": 1,
      "reasons": [
-      "Price is 5.4% above its 50-day average.",
+      "Price is 4.3% above its 50-day average.",
       "The 50-day average sits above the 200-day — a long-term uptrend.",
-      "Three-month return +18.3%.",
-      "Six-month return +9.1%.",
-      "Rising overall, but the path is erratic (R² 0.13) — a less reliable trend.",
-      "2.0% below its 12-month high."
+      "Three-month return +17.3%.",
+      "Six-month return +8.9%.",
+      "Rising overall, but the path is erratic (R² 0.15) — a less reliable trend.",
+      "2.8% below its 12-month high."
      ]
     },
     "analyst": {
@@ -2175,7 +2175,7 @@
     },
     "risk": {
      "band": "moderate",
-     "annualisedVol": 0.20015927754569568,
+     "annualisedVol": 0.2002507226302102,
      "maxDrawdown": 0.12725104353011318,
      "worstDay": 0.07591654606849974,
      "reasons": [
@@ -2191,34 +2191,34 @@
      "analyst forecasts"
     ]
    },
-   "deltaComposite": 1.0379476392490972,
+   "deltaComposite": -0.5344643897036505,
    "isNew": false
   },
   {
    "id": "LLY",
    "symbol": "LLY",
    "name": "Eli Lilly",
-   "price": 1231.93994,
+   "price": 1215.02002,
    "currency": "USD",
-   "move1": 0.03898928199945284,
-   "move30": 0.0197165347813133,
+   "move1": -0.013734370849280197,
+   "move30": -0.012122665024730472,
    "rating": {
     "id": "LLY",
     "symbol": "LLY",
     "name": "Eli Lilly",
     "kind": "equity",
     "stars": 4,
-    "composite": 77.66545342885568,
+    "composite": 76.16680906801358,
     "trend": {
-     "score": 79.04033028933404,
+     "score": 76.54258968793053,
      "confidence": 1,
      "reasons": [
-      "Price is 6.2% above its 50-day average.",
+      "Price is 4.6% above its 50-day average.",
       "The 50-day average sits above the 200-day — a long-term uptrend.",
-      "Three-month return +29.9%.",
-      "Six-month return +16.4%.",
-      "Rising overall, but the path is erratic (R² 0.53) — a less reliable trend.",
-      "0.3% below its 12-month high."
+      "Three-month return +25.6%.",
+      "Six-month return +16.3%.",
+      "Rising overall, but the path is erratic (R² 0.55) — a less reliable trend.",
+      "1.7% below its 12-month high."
      ]
     },
     "analyst": {
@@ -2256,7 +2256,7 @@
     },
     "risk": {
      "band": "high",
-     "annualisedVol": 0.4001390772132332,
+     "annualisedVol": 0.3998990073278909,
      "maxDrawdown": 0.3270554143308334,
      "worstDay": 0.14136421613944816,
      "reasons": [
@@ -2272,35 +2272,35 @@
      "analyst forecasts"
     ]
    },
-   "deltaComposite": 4.2687296960397845,
+   "deltaComposite": -1.498644360842107,
    "isNew": false
   },
   {
    "id": "PFE",
    "symbol": "PFE",
    "name": "Pfizer",
-   "price": 27.049999,
+   "price": 26.62,
    "currency": "USD",
-   "move1": 0.010837032884902786,
-   "move30": 0.11362696582955945,
+   "move1": -0.015896451604304973,
+   "move30": 0.09232663110381623,
    "rating": {
     "id": "PFE",
     "symbol": "PFE",
     "name": "Pfizer",
     "kind": "equity",
     "stars": 1,
-    "composite": 27.439830857202992,
+    "composite": 32.691139714081395,
     "trend": {
-     "score": 27.541559937180153,
+     "score": 36.29374136531082,
      "confidence": 1,
      "reasons": [
-      "Price is 7.8% above its 50-day average.",
+      "Price is 6.0% above its 50-day average.",
       "The 50-day average sits below the 200-day — a long-term downtrend.",
-      "Three-month return +5.3%.",
-      "Six-month return -0.6%.",
+      "Three-month return +3.1%.",
+      "Six-month return -1.6%.",
       "The underlying direction over six months is down.",
-      "Stretched further above its own 50-day average than it has been 98% of this year. Scored down: a run this extended has more room to snap back than to continue.",
-      "5.3% below its 12-month high."
+      "Stretched further above its own 50-day average than it has been 93% of this year. Scored down: a run this extended has more room to snap back than to continue.",
+      "6.8% below its 12-month high."
      ]
     },
     "analyst": {
@@ -2338,7 +2338,7 @@
     },
     "risk": {
      "band": "moderate",
-     "annualisedVol": 0.24696808667614317,
+     "annualisedVol": 0.24713644714926022,
      "maxDrawdown": 0.2042019904165131,
      "worstDay": 0.05434335117332234,
      "reasons": [
@@ -2354,34 +2354,34 @@
      "analyst forecasts"
     ]
    },
-   "deltaComposite": -1.5032235392379611,
+   "deltaComposite": 5.251308856878403,
    "isNew": false
   },
   {
    "id": "ABBV",
    "symbol": "ABBV",
    "name": "AbbVie",
-   "price": 247.97,
+   "price": 250.089996,
    "currency": "USD",
-   "move1": 0.00784428164083062,
-   "move30": -0.021235483669410526,
+   "move1": 0.008549405169980373,
+   "move30": -0.0165939365341512,
    "rating": {
     "id": "ABBV",
     "symbol": "ABBV",
     "name": "AbbVie",
     "kind": "equity",
     "stars": 3,
-    "composite": 57.26712489829254,
+    "composite": 58.19409064184353,
     "trend": {
-     "score": 63.16743038604314,
+     "score": 64.71237329196144,
      "confidence": 1,
      "reasons": [
-      "Price is 2.6% above its 50-day average.",
+      "Price is 3.2% above its 50-day average.",
       "The 50-day average sits above the 200-day — a long-term uptrend.",
-      "Three-month return +23.0%.",
-      "Six-month return +11.0%.",
-      "Rising overall, but the path is erratic (R² 0.32) — a less reliable trend.",
-      "5.8% below its 12-month high."
+      "Three-month return +23.3%.",
+      "Six-month return +12.0%.",
+      "Rising overall, but the path is erratic (R² 0.33) — a less reliable trend.",
+      "5.0% below its 12-month high."
      ]
     },
     "analyst": {
@@ -2419,7 +2419,7 @@
     },
     "risk": {
      "band": "moderate",
-     "annualisedVol": 0.26868602727598717,
+     "annualisedVol": 0.2686982453431747,
      "maxDrawdown": 0.21462198836887292,
      "worstDay": 0.07280296568141231,
      "reasons": [
@@ -2435,34 +2435,34 @@
      "analyst forecasts"
     ]
    },
-   "deltaComposite": 8.842074090160366,
+   "deltaComposite": 0.926965743550987,
    "isNew": false
   },
   {
    "id": "MRK",
    "symbol": "MRK",
    "name": "Merck",
-   "price": 130.92,
+   "price": 130.42,
    "currency": "USD",
-   "move1": 0.018198786747549933,
-   "move30": 0.017565676978081646,
+   "move1": -0.0038191261839291,
+   "move30": 0.008038336682640201,
    "rating": {
     "id": "MRK",
     "symbol": "MRK",
     "name": "Merck",
     "kind": "equity",
     "stars": 3,
-    "composite": 50.14560620208156,
+    "composite": 50.51096932790847,
     "trend": {
-     "score": 62.770825151617416,
+     "score": 63.37976369466226,
      "confidence": 1,
      "reasons": [
-      "Price is 5.5% above its 50-day average.",
+      "Price is 4.9% above its 50-day average.",
       "The 50-day average sits above the 200-day — a long-term uptrend.",
-      "Three-month return +17.5%.",
-      "Six-month return +7.4%.",
-      "Rising overall, but the path is erratic (R² 0.24) — a less reliable trend.",
-      "0.7% below its 12-month high."
+      "Three-month return +17.2%.",
+      "Six-month return +10.9%.",
+      "Rising overall, but the path is erratic (R² 0.25) — a less reliable trend.",
+      "1.1% below its 12-month high."
      ]
     },
     "analyst": {
@@ -2500,7 +2500,7 @@
     },
     "risk": {
      "band": "moderate",
-     "annualisedVol": 0.29171458336859235,
+     "annualisedVol": 0.29170790250137274,
      "maxDrawdown": 0.27271825201103506,
      "worstDay": 0.0906904499448844,
      "reasons": [
@@ -2516,35 +2516,35 @@
      "analyst forecasts"
     ]
    },
-   "deltaComposite": 1.9876944150880291,
+   "deltaComposite": 0.3653631258269101,
    "isNew": false
   },
   {
    "id": "TMO",
    "symbol": "TMO",
    "name": "Thermo Fisher Scientific",
-   "price": 599.69,
+   "price": 605,
    "currency": "USD",
-   "move1": 0.009579124579124576,
-   "move30": 0.16891793092290897,
+   "move1": 0.008854574863679465,
+   "move30": 0.19466053483945078,
    "rating": {
     "id": "TMO",
     "symbol": "TMO",
     "name": "Thermo Fisher Scientific",
     "kind": "equity",
     "stars": 2,
-    "composite": 44.757417553226446,
+    "composite": 44.248691931587565,
     "trend": {
-     "score": 40.42240262875079,
+     "score": 39.574526592686,
      "confidence": 1,
      "reasons": [
-      "Price is 15.4% above its 50-day average.",
+      "Price is 15.9% above its 50-day average.",
       "The 50-day average sits below the 200-day — a long-term downtrend.",
-      "Three-month return +29.0%.",
-      "Six-month return +10.5%.",
-      "Rising overall, but the path is erratic (R² 0.10) — a less reliable trend.",
-      "Stretched further above its own 50-day average than it has been 98% of this year. Scored down: a run this extended has more room to snap back than to continue.",
-      "6.2% below its 12-month high."
+      "Three-month return +33.7%.",
+      "Six-month return +10.7%.",
+      "Rising overall, but the path is erratic (R² 0.13) — a less reliable trend.",
+      "Stretched further above its own 50-day average than it has been 99% of this year. Scored down: a run this extended has more room to snap back than to continue.",
+      "5.4% below its 12-month high."
      ]
     },
     "analyst": {
@@ -2582,7 +2582,7 @@
     },
     "risk": {
      "band": "high",
-     "annualisedVol": 0.3241280250753477,
+     "annualisedVol": 0.3241130840435441,
      "maxDrawdown": 0.3567920090449288,
      "worstDay": 0.09198796030927103,
      "reasons": [
@@ -2598,35 +2598,35 @@
      "analyst forecasts"
     ]
    },
-   "deltaComposite": 0.4495369913498166,
+   "deltaComposite": -0.5087256216388809,
    "isNew": false
   },
   {
    "id": "ABT",
    "symbol": "ABT",
    "name": "Abbott Laboratories",
-   "price": 108.62,
+   "price": 109.72,
    "currency": "USD",
-   "move1": 0.007513217697801666,
-   "move30": 0.1540586485337867,
+   "move1": 0.010127048425704333,
+   "move30": 0.18347535325207653,
    "rating": {
     "id": "ABT",
     "symbol": "ABT",
     "name": "Abbott Laboratories",
     "kind": "equity",
     "stars": 2,
-    "composite": 43.50857065098844,
+    "composite": 43.28958487698825,
     "trend": {
-     "score": 45.29148161551126,
+     "score": 44.92650532551096,
      "confidence": 1,
      "reasons": [
-      "Price is 13.5% above its 50-day average.",
+      "Price is 14.1% above its 50-day average.",
       "The 50-day average sits below the 200-day — a long-term downtrend.",
-      "Three-month return +28.8%.",
-      "Six-month return -2.0%.",
+      "Three-month return +32.9%.",
+      "Six-month return -1.2%.",
       "The underlying direction over six months is down.",
-      "Stretched further above its own 50-day average than it has been 98% of this year. Scored down: a run this extended has more room to snap back than to continue.",
-      "20.5% below its 12-month high."
+      "Stretched further above its own 50-day average than it has been 99% of this year. Scored down: a run this extended has more room to snap back than to continue.",
+      "19.7% below its 12-month high."
      ]
     },
     "analyst": {
@@ -2664,7 +2664,7 @@
     },
     "risk": {
      "band": "high",
-     "annualisedVol": 0.26096028444024355,
+     "annualisedVol": 0.26102857534269513,
      "maxDrawdown": 0.41121095421480525,
      "worstDay": 0.10038929843452338,
      "reasons": [
@@ -2680,34 +2680,34 @@
      "analyst forecasts"
     ]
    },
-   "deltaComposite": 1.0873858215623784,
+   "deltaComposite": -0.21898577400018837,
    "isNew": false
   },
   {
    "id": "PG",
    "symbol": "PG",
    "name": "Procter & Gamble",
-   "price": 146.44,
+   "price": 145.21001,
    "currency": "USD",
-   "move1": 0.004458536556590786,
-   "move30": -0.017313138711229636,
+   "move1": -0.008399276154056223,
+   "move30": -0.021825463118895105,
    "rating": {
     "id": "PG",
     "symbol": "PG",
     "name": "Procter & Gamble",
     "kind": "equity",
     "stars": 3,
-    "composite": 56.396827409346905,
+    "composite": 56.48870693357205,
     "trend": {
-     "score": 49.948290927490085,
+     "score": 50.101423467865324,
      "confidence": 1,
      "reasons": [
-      "Price is 0.8% below its 50-day average.",
+      "Price is 1.6% below its 50-day average.",
       "The 50-day average sits below the 200-day — a long-term downtrend.",
-      "Three-month return +0.0%.",
-      "Six-month return -8.0%.",
+      "Three-month return +1.3%.",
+      "Six-month return -7.7%.",
       "The underlying direction over six months is down.",
-      "12.4% below its 12-month high."
+      "13.2% below its 12-month high."
      ]
     },
     "analyst": {
@@ -2745,7 +2745,7 @@
     },
     "risk": {
      "band": "moderate",
-     "annualisedVol": 0.2007674384569332,
+     "annualisedVol": 0.19967347817198003,
      "maxDrawdown": 0.21683875620326531,
      "worstDay": 0.05011891641046462,
      "reasons": [
@@ -2761,34 +2761,34 @@
      "analyst forecasts"
     ]
    },
-   "deltaComposite": 0.5157436844244501,
+   "deltaComposite": 0.091879524225142,
    "isNew": false
   },
   {
    "id": "KO",
    "symbol": "KO",
    "name": "Coca-Cola",
-   "price": 86.87,
+   "price": 86.48,
    "currency": "USD",
-   "move1": -0.002067811531264341,
-   "move30": 0.05131308241558763,
+   "move1": -0.0044894670196845565,
+   "move30": 0.04633998790078642,
    "rating": {
     "id": "KO",
     "symbol": "KO",
     "name": "Coca-Cola",
     "kind": "equity",
     "stars": 4,
-    "composite": 67.95751011275416,
+    "composite": 67.84743101850393,
     "trend": {
-     "score": 66.75700634407977,
+     "score": 66.57354118699604,
      "confidence": 1,
      "reasons": [
-      "Price is 5.0% above its 50-day average.",
+      "Price is 4.4% above its 50-day average.",
       "The 50-day average sits above the 200-day — a long-term uptrend.",
-      "Three-month return +10.8%.",
-      "Six-month return +9.9%.",
-      "Rising overall, but the path is erratic (R² 0.53) — a less reliable trend.",
-      "2.5% below its 12-month high."
+      "Three-month return +9.9%.",
+      "Six-month return +10.9%.",
+      "Rising overall, but the path is erratic (R² 0.55) — a less reliable trend.",
+      "2.9% below its 12-month high."
      ]
     },
     "analyst": {
@@ -2826,7 +2826,7 @@
     },
     "risk": {
      "band": "moderate",
-     "annualisedVol": 0.18850331695262051,
+     "annualisedVol": 0.18811007941129074,
      "maxDrawdown": 0.11136671177266577,
      "worstDay": 0.04441104126810602,
      "reasons": [
@@ -2842,34 +2842,34 @@
      "analyst forecasts"
     ]
    },
-   "deltaComposite": -0.026472313777446743,
+   "deltaComposite": -0.11007909425023854,
    "isNew": false
   },
   {
    "id": "PEP",
    "symbol": "PEP",
    "name": "PepsiCo",
-   "price": 137.73,
+   "price": 138.41,
    "currency": "USD",
-   "move1": -0.009279268902912752,
-   "move30": -0.025885847655421124,
+   "move1": 0.00493719596311637,
+   "move30": -0.0019468562119163701,
    "rating": {
     "id": "PEP",
     "symbol": "PEP",
     "name": "PepsiCo",
     "kind": "equity",
     "stars": 2,
-    "composite": 36.00202759639159,
+    "composite": 37.474582217704125,
     "trend": {
-     "score": 18.75965560359559,
+     "score": 21.213913305783155,
      "confidence": 1,
      "reasons": [
-      "Price is 1.9% below its 50-day average.",
+      "Price is 1.3% below its 50-day average.",
       "The 50-day average sits below the 200-day — a long-term downtrend.",
-      "Three-month return -10.9%.",
-      "Six-month return -19.2%.",
+      "Three-month return -7.4%.",
+      "Six-month return -16.9%.",
       "The underlying direction over six months is down.",
-      "19.2% below its 12-month high."
+      "18.8% below its 12-month high."
      ]
     },
     "analyst": {
@@ -2907,7 +2907,7 @@
     },
     "risk": {
      "band": "moderate",
-     "annualisedVol": 0.22706789239666017,
+     "annualisedVol": 0.22638647050073532,
      "maxDrawdown": 0.20845802050219842,
      "worstDay": 0.0488541437406258,
      "reasons": [
@@ -2923,34 +2923,34 @@
      "analyst forecasts"
     ]
    },
-   "deltaComposite": -0.7168083184179537,
+   "deltaComposite": 1.4725546213125327,
    "isNew": false
   },
   {
    "id": "WMT",
    "symbol": "WMT",
    "name": "Walmart",
-   "price": 112.66,
+   "price": 113.26,
    "currency": "USD",
-   "move1": 0.007241841752346989,
-   "move30": -0.026190681994986642,
+   "move1": 0.005325758920646351,
+   "move30": -0.011692844677137826,
    "rating": {
     "id": "WMT",
     "symbol": "WMT",
     "name": "Walmart",
     "kind": "equity",
     "stars": 2,
-    "composite": 38.42766044855048,
+    "composite": 39.49804862789046,
     "trend": {
-     "score": 28.584499145982544,
+     "score": 30.368479444882514,
      "confidence": 1,
      "reasons": [
-      "Price is 1.6% below its 50-day average.",
+      "Price is 1.0% below its 50-day average.",
       "The 50-day average sits below the 200-day — a long-term downtrend.",
-      "Three-month return -13.6%.",
-      "Six-month return -14.1%.",
+      "Three-month return -11.2%.",
+      "Six-month return -12.2%.",
       "The underlying direction over six months is down.",
-      "16.1% below its 12-month high."
+      "15.6% below its 12-month high."
      ]
     },
     "analyst": {
@@ -2988,7 +2988,7 @@
     },
     "risk": {
      "band": "moderate",
-     "annualisedVol": 0.2546518052985809,
+     "annualisedVol": 0.2546260386484663,
      "maxDrawdown": 0.22141839443831335,
      "worstDay": 0.07267871053276953,
      "reasons": [
@@ -3004,34 +3004,34 @@
      "analyst forecasts"
     ]
    },
-   "deltaComposite": 0.1388820250191074,
+   "deltaComposite": 1.0703881793399788,
    "isNew": false
   },
   {
    "id": "HD",
    "symbol": "HD",
    "name": "Home Depot",
-   "price": 350.78,
+   "price": 354.48001,
    "currency": "USD",
-   "move1": -0.013610033181485903,
-   "move30": 0.005503669251380794,
+   "move1": 0.010547950282228324,
+   "move30": 0.010461531883355635,
    "rating": {
     "id": "HD",
     "symbol": "HD",
     "name": "Home Depot",
     "kind": "equity",
-    "stars": 2,
-    "composite": 48.669263639225655,
+    "stars": 3,
+    "composite": 50.78339964495499,
     "trend": {
-     "score": 56.004703662973704,
+     "score": 59.528263672522584,
      "confidence": 1,
      "reasons": [
-      "Price is 4.7% above its 50-day average.",
+      "Price is 5.5% above its 50-day average.",
       "The 50-day average sits below the 200-day — a long-term downtrend.",
-      "Three-month return +10.5%.",
-      "Six-month return -8.9%.",
+      "Three-month return +13.8%.",
+      "Six-month return -7.0%.",
       "The underlying direction over six months is down.",
-      "17.2% below its 12-month high."
+      "16.3% below its 12-month high."
      ]
     },
     "analyst": {
@@ -3069,7 +3069,7 @@
     },
     "risk": {
      "band": "moderate",
-     "annualisedVol": 0.24923090022654218,
+     "annualisedVol": 0.24937670313083082,
      "maxDrawdown": 0.29976225669028167,
      "worstDay": 0.06019045627514574,
      "reasons": [
@@ -3085,34 +3085,34 @@
      "analyst forecasts"
     ]
    },
-   "deltaComposite": -0.4258483227205758,
+   "deltaComposite": 2.1141360057293355,
    "isNew": false
   },
   {
    "id": "MCD",
    "symbol": "MCD",
    "name": "McDonald's",
-   "price": 273.72,
+   "price": 274.14999,
    "currency": "USD",
-   "move1": -0.0027689083806138326,
-   "move30": 0.014679677688327564,
+   "move1": 0.001570911880753867,
+   "move30": 0.026087282958577873,
    "rating": {
     "id": "MCD",
     "symbol": "MCD",
     "name": "McDonald's",
     "kind": "equity",
     "stars": 2,
-    "composite": 36.03941088995685,
+    "composite": 36.36639450226152,
     "trend": {
-     "score": 22.52638551729546,
+     "score": 23.07135820446991,
      "confidence": 1,
      "reasons": [
-      "Price is 0.0% below its 50-day average.",
+      "Price is 0.2% above its 50-day average.",
       "The 50-day average sits below the 200-day — a long-term downtrend.",
-      "Three-month return -0.7%.",
-      "Six-month return -16.3%.",
+      "Three-month return -0.2%.",
+      "Six-month return -15.8%.",
       "The underlying direction over six months is down.",
-      "19.7% below its 12-month high."
+      "19.6% below its 12-month high."
      ]
     },
     "analyst": {
@@ -3150,7 +3150,7 @@
     },
     "risk": {
      "band": "moderate",
-     "annualisedVol": 0.189783317865156,
+     "annualisedVol": 0.18966247184208712,
      "maxDrawdown": 0.22946111669184965,
      "worstDay": 0.05705847415899945,
      "reasons": [
@@ -3166,34 +3166,34 @@
      "analyst forecasts"
     ]
    },
-   "deltaComposite": 0.32130848918676946,
+   "deltaComposite": 0.326983612304673,
    "isNew": false
   },
   {
    "id": "NKE",
    "symbol": "NKE",
    "name": "Nike",
-   "price": 42.11,
+   "price": 41.32,
    "currency": "USD",
-   "move1": 0.009832134292565797,
-   "move30": 0.03337423312883425,
+   "move1": -0.01876038945618619,
+   "move30": -0.0038572806171648377,
    "rating": {
     "id": "NKE",
     "symbol": "NKE",
     "name": "Nike",
     "kind": "equity",
     "stars": 1,
-    "composite": 30.410839842864387,
+    "composite": 30.221104204544222,
     "trend": {
-     "score": 17.368261599969173,
+     "score": 17.05203553610223,
      "confidence": 1,
      "reasons": [
-      "Price is 2.4% below its 50-day average.",
+      "Price is 4.0% below its 50-day average.",
       "The 50-day average sits below the 200-day — a long-term downtrend.",
-      "Three-month return -4.6%.",
-      "Six-month return -34.1%.",
+      "Three-month return -2.5%.",
+      "Six-month return -33.8%.",
       "The underlying direction over six months is down.",
-      "46.8% below its 12-month high."
+      "47.8% below its 12-month high."
      ]
     },
     "analyst": {
@@ -3231,7 +3231,7 @@
     },
     "risk": {
      "band": "very-high",
-     "annualisedVol": 0.4047378036543092,
+     "annualisedVol": 0.40476207621363214,
      "maxDrawdown": 0.5013460597161037,
      "worstDay": 0.15505490344566453,
      "reasons": [
@@ -3247,34 +3247,34 @@
      "analyst forecasts"
     ]
    },
-   "deltaComposite": 1.1205704315961214,
+   "deltaComposite": -0.18973563832016538,
    "isNew": false
   },
   {
    "id": "DIS",
    "symbol": "DIS",
    "name": "Walt Disney",
-   "price": 103.18,
+   "price": 103.53,
    "currency": "USD",
-   "move1": -0.016490325040510845,
-   "move30": 0.044437696123089454,
+   "move1": 0.0033921302578019397,
+   "move30": 0.04968062455642297,
    "rating": {
     "id": "DIS",
     "symbol": "DIS",
     "name": "Walt Disney",
     "kind": "equity",
     "stars": 2,
-    "composite": 46.02610378051215,
+    "composite": 47.672825336480095,
     "trend": {
-     "score": 48.921354148701425,
+     "score": 51.66589007531468,
      "confidence": 1,
      "reasons": [
-      "Price is 4.3% above its 50-day average.",
+      "Price is 4.6% above its 50-day average.",
       "The 50-day average sits below the 200-day — a long-term downtrend.",
-      "Three-month return -4.5%.",
-      "Six-month return -5.1%.",
+      "Three-month return -1.1%.",
+      "Six-month return -3.4%.",
       "The underlying direction over six months is down.",
-      "13.2% below its 12-month high."
+      "12.9% below its 12-month high."
      ]
     },
     "analyst": {
@@ -3312,7 +3312,7 @@
     },
     "risk": {
      "band": "moderate",
-     "annualisedVol": 0.2928423439860788,
+     "annualisedVol": 0.29285539618620593,
      "maxDrawdown": 0.28315789473684216,
      "worstDay": 0.09235798937474449,
      "reasons": [
@@ -3328,34 +3328,34 @@
      "analyst forecasts"
     ]
    },
-   "deltaComposite": -1.336656530075615,
+   "deltaComposite": 1.6467215559679431,
    "isNew": false
   },
   {
    "id": "COST",
    "symbol": "COST",
    "name": "Costco Wholesale",
-   "price": 952.75,
+   "price": 944.32001,
    "currency": "USD",
-   "move1": 0.005201398944932656,
-   "move30": 0.00022048418377140777,
+   "move1": -0.008848060876410324,
+   "move30": -0.0024929015347624484,
    "rating": {
     "id": "COST",
     "symbol": "COST",
     "name": "Costco Wholesale",
     "kind": "equity",
     "stars": 2,
-    "composite": 47.673187169965594,
+    "composite": 47.02340024416287,
     "trend": {
-     "score": 44.9210526906834,
+     "score": 43.83807448101219,
      "confidence": 1,
      "reasons": [
-      "Price is 0.2% above its 50-day average.",
+      "Price is 0.6% below its 50-day average.",
       "The 50-day average sits below the 200-day — a long-term downtrend.",
-      "Three-month return -5.6%.",
-      "Six-month return -4.8%.",
+      "Three-month return -5.5%.",
+      "Six-month return -5.3%.",
       "The underlying direction over six months is down.",
-      "12.9% below its 12-month high."
+      "13.7% below its 12-month high."
      ]
     },
     "analyst": {
@@ -3393,7 +3393,7 @@
     },
     "risk": {
      "band": "moderate",
-     "annualisedVol": 0.21481267595396888,
+     "annualisedVol": 0.2148671493904635,
      "maxDrawdown": 0.21066804608461676,
      "worstDay": 0.060694317274161746,
      "reasons": [
@@ -3409,32 +3409,32 @@
      "analyst forecasts"
     ]
    },
-   "deltaComposite": 0.2704455442572353,
+   "deltaComposite": -0.6497869258027222,
    "isNew": false
   },
   {
    "id": "XOM",
    "symbol": "XOM",
    "name": "ExxonMobil",
-   "price": 159.78999,
+   "price": 159.8,
    "currency": "USD",
-   "move1": 0.04410609846277236,
-   "move30": 0.1702797839665875,
+   "move1": 0.00006264472511707808,
+   "move30": 0.1744818635084795,
    "rating": {
     "id": "XOM",
     "symbol": "XOM",
     "name": "ExxonMobil",
     "kind": "equity",
     "stars": 4,
-    "composite": 67.04732304742511,
+    "composite": 66.04182168315319,
     "trend": {
-     "score": 73.06226513910191,
+     "score": 71.38642953198203,
      "confidence": 1,
      "reasons": [
-      "Price is 8.9% above its 50-day average.",
+      "Price is 8.7% above its 50-day average.",
       "The 50-day average sits above the 200-day — a long-term uptrend.",
-      "Three-month return +10.5%.",
-      "Six-month return +7.2%.",
+      "Three-month return +6.8%.",
+      "Six-month return +5.7%.",
       "The underlying direction over six months is down.",
       "6.8% below its 12-month high."
      ]
@@ -3474,7 +3474,7 @@
     },
     "risk": {
      "band": "moderate",
-     "annualisedVol": 0.26030911355233577,
+     "annualisedVol": 0.2603047898515201,
      "maxDrawdown": 0.20650843879395808,
      "worstDay": 0.07195588366094463,
      "reasons": [
@@ -3490,34 +3490,34 @@
      "analyst forecasts"
     ]
    },
-   "deltaComposite": 4.172026069435667,
+   "deltaComposite": -1.0055013642719217,
    "isNew": false
   },
   {
    "id": "CVX",
    "symbol": "CVX",
    "name": "Chevron",
-   "price": 194.91,
+   "price": 196.66,
    "currency": "USD",
-   "move1": 0.044757718696397886,
-   "move30": 0.1394247765628993,
+   "move1": 0.008978502898773888,
+   "move30": 0.1673294948655546,
    "rating": {
     "id": "CVX",
     "symbol": "CVX",
     "name": "Chevron",
     "kind": "equity",
     "stars": 4,
-    "composite": 67.13330836253465,
+    "composite": 67.33419015492818,
     "trend": {
-     "score": 69.48585427789808,
+     "score": 69.82065726522063,
      "confidence": 1,
      "reasons": [
-      "Price is 6.5% above its 50-day average.",
+      "Price is 7.2% above its 50-day average.",
       "The 50-day average sits above the 200-day — a long-term uptrend.",
-      "Three-month return +7.3%.",
-      "Six-month return +7.8%.",
+      "Three-month return +6.5%.",
+      "Six-month return +7.7%.",
       "The underlying direction over six months is down.",
-      "7.7% below its 12-month high."
+      "6.9% below its 12-month high."
      ]
     },
     "analyst": {
@@ -3555,7 +3555,7 @@
     },
     "risk": {
      "band": "moderate",
-     "annualisedVol": 0.2556574565985192,
+     "annualisedVol": 0.2557138764200452,
      "maxDrawdown": 0.21529714493474528,
      "worstDay": 0.08224442736356652,
      "reasons": [
@@ -3571,34 +3571,34 @@
      "analyst forecasts"
     ]
    },
-   "deltaComposite": 3.929129853023163,
+   "deltaComposite": 0.2008817923935311,
    "isNew": false
   },
   {
    "id": "CAT",
    "symbol": "CAT",
    "name": "Caterpillar",
-   "price": 837.58002,
+   "price": 843.37,
    "currency": "USD",
-   "move1": -0.005473800448829946,
-   "move30": -0.160295502430013,
+   "move1": 0.006912748467901686,
+   "move30": -0.18372221084537466,
    "rating": {
     "id": "CAT",
     "symbol": "CAT",
     "name": "Caterpillar",
     "kind": "equity",
     "stars": 3,
-    "composite": 55.29589253212773,
+    "composite": 54.5952648014445,
     "trend": {
-     "score": 52.785341407400075,
+     "score": 51.61762852292802,
      "confidence": 1,
      "reasons": [
-      "Price is 8.5% below its 50-day average.",
+      "Price is 7.9% below its 50-day average.",
       "The 50-day average sits above the 200-day — a long-term uptrend.",
-      "Three-month return -6.7%.",
-      "Six-month return +15.3%.",
-      "Rising overall, but the path is erratic (R² 0.56) — a less reliable trend.",
-      "21.3% below its 12-month high."
+      "Three-month return -9.0%.",
+      "Six-month return +13.6%.",
+      "Rising overall, but the path is erratic (R² 0.55) — a less reliable trend.",
+      "20.8% below its 12-month high."
      ]
     },
     "analyst": {
@@ -3636,7 +3636,7 @@
     },
     "risk": {
      "band": "high",
-     "annualisedVol": 0.3662639679108647,
+     "annualisedVol": 0.3662829983382813,
      "maxDrawdown": 0.32796899148737824,
      "worstDay": 0.08635627203729157,
      "reasons": [
@@ -3652,34 +3652,34 @@
      "analyst forecasts"
     ]
    },
-   "deltaComposite": -1.95365575522235,
+   "deltaComposite": -0.7006277306832303,
    "isNew": false
   },
   {
    "id": "BA",
    "symbol": "BA",
    "name": "Boeing",
-   "price": 232.78999,
+   "price": 233.24001,
    "currency": "USD",
-   "move1": -0.006953374285470493,
-   "move30": 0.07153044879171455,
+   "move1": 0.0019331587238782255,
+   "move30": 0.08640369835576878,
    "rating": {
     "id": "BA",
     "symbol": "BA",
     "name": "Boeing",
     "kind": "equity",
     "stars": 3,
-    "composite": 52.174306132926624,
+    "composite": 52.145134510079345,
     "trend": {
-     "score": 59.006954665988815,
+     "score": 58.95833529457669,
      "confidence": 1,
      "reasons": [
-      "Price is 5.6% above its 50-day average.",
+      "Price is 5.8% above its 50-day average.",
       "The 50-day average sits above the 200-day — a long-term uptrend.",
-      "Three-month return -1.9%.",
-      "Six-month return -4.2%.",
+      "Three-month return -2.1%.",
+      "Six-month return -4.7%.",
       "The underlying direction over six months is down.",
-      "7.7% below its 12-month high."
+      "7.5% below its 12-month high."
      ]
     },
     "analyst": {
@@ -3716,7 +3716,7 @@
     },
     "risk": {
      "band": "high",
-     "annualisedVol": 0.36660270213173174,
+     "annualisedVol": 0.36658726183334545,
      "maxDrawdown": 0.2666308724832215,
      "worstDay": 0.10471048884670153,
      "reasons": [
@@ -3732,34 +3732,34 @@
      "analyst forecasts"
     ]
    },
-   "deltaComposite": -1.6627964868546172,
+   "deltaComposite": -0.029171622847279366,
    "isNew": false
   },
   {
    "id": "GE",
    "symbol": "GE",
    "name": "General Electric",
-   "price": 366.70001,
+   "price": 368.059998,
    "currency": "USD",
-   "move1": -0.009133098569850562,
-   "move30": -0.006233035230352235,
+   "move1": 0.003708720924223474,
+   "move30": -0.01511865390593381,
    "rating": {
     "id": "GE",
     "symbol": "GE",
     "name": "General Electric",
     "kind": "equity",
     "stars": 4,
-    "composite": 67.44444806947983,
+    "composite": 67.7891267596505,
     "trend": {
-     "score": 67.98131735303694,
+     "score": 68.55578183665475,
      "confidence": 1,
      "reasons": [
-      "Price is 3.9% above its 50-day average.",
+      "Price is 4.1% above its 50-day average.",
       "The 50-day average sits above the 200-day — a long-term uptrend.",
-      "Three-month return +23.4%.",
-      "Six-month return +14.2%.",
-      "Rising overall, but the path is erratic (R² 0.32) — a less reliable trend.",
-      "3.8% below its 12-month high."
+      "Three-month return +22.4%.",
+      "Six-month return +16.2%.",
+      "Rising overall, but the path is erratic (R² 0.33) — a less reliable trend.",
+      "3.5% below its 12-month high."
      ]
     },
     "analyst": {
@@ -3797,7 +3797,7 @@
     },
     "risk": {
      "band": "high",
-     "annualisedVol": 0.3307837673187876,
+     "annualisedVol": 0.33078602083808717,
      "maxDrawdown": 0.21364257766463957,
      "worstDay": 0.11096306560784519,
      "reasons": [
@@ -3813,34 +3813,34 @@
      "analyst forecasts"
     ]
    },
-   "deltaComposite": -0.9742847426939534,
+   "deltaComposite": 0.3446786901706673,
    "isNew": false
   },
   {
    "id": "HON",
    "symbol": "HON",
    "name": "Honeywell",
-   "price": 242.92999,
+   "price": 230.12,
    "currency": "USD",
-   "move1": -0.013322041618047953,
-   "move30": -0.0024816211758217355,
+   "move1": -0.05273120045820612,
+   "move30": 0.01018437225636526,
    "rating": {
     "id": "HON",
     "symbol": "HON",
     "name": "Honeywell",
     "kind": "equity",
     "stars": 4,
-    "composite": 71.9706078201246,
+    "composite": 66.08978923454573,
     "trend": {
-     "score": 70.94736938989735,
+     "score": 61.14600508059925,
      "confidence": 1,
      "reasons": [
-      "Price is 5.3% above its 50-day average.",
+      "Price is 0.2% below its 50-day average.",
       "The 50-day average sits above the 200-day — a long-term uptrend.",
-      "Three-month return +14.0%.",
-      "Six-month return +1.9%.",
+      "Three-month return +5.0%.",
+      "Six-month return -4.1%.",
       "The underlying direction over six months is down.",
-      "2.4% below its 12-month high."
+      "7.5% below its 12-month high."
      ]
     },
     "analyst": {
@@ -3878,8 +3878,8 @@
     },
     "risk": {
      "band": "moderate",
-     "annualisedVol": 0.2713021534308868,
-     "maxDrawdown": 0.1927423234176454,
+     "annualisedVol": 0.27420196782781564,
+     "maxDrawdown": 0.18984537821256753,
      "worstDay": 0.07591442769039591,
      "reasons": [
       "Annualised volatility 27%.",
@@ -3894,34 +3894,34 @@
      "analyst forecasts"
     ]
    },
-   "deltaComposite": -1.1930373853621035,
+   "deltaComposite": -5.880818585578865,
    "isNew": false
   },
   {
    "id": "NFLX",
    "symbol": "NFLX",
    "name": "Netflix",
-   "price": 76.29,
+   "price": 74.79,
    "currency": "USD",
-   "move1": 0.028999190720259138,
-   "move30": 0.03359978322720503,
+   "move1": -0.019661816751867844,
+   "move30": 0.013689346706424521,
    "rating": {
     "id": "NFLX",
     "symbol": "NFLX",
     "name": "Netflix",
     "kind": "equity",
     "stars": 3,
-    "composite": 52.217057568442634,
+    "composite": 50.94137800503774,
     "trend": {
-     "score": 29.91420505651351,
+     "score": 27.788072450838694,
      "confidence": 1,
      "reasons": [
-      "Price is 1.1% above its 50-day average.",
+      "Price is 0.6% below its 50-day average.",
       "The 50-day average sits below the 200-day — a long-term downtrend.",
-      "Three-month return -12.8%.",
-      "Six-month return -7.2%.",
+      "Three-month return -12.5%.",
+      "Six-month return -8.2%.",
       "The underlying direction over six months is down.",
-      "39.6% below its 12-month high."
+      "40.8% below its 12-month high."
      ]
     },
     "analyst": {
@@ -3959,7 +3959,7 @@
     },
     "risk": {
      "band": "high",
-     "annualisedVol": 0.3534286673427272,
+     "annualisedVol": 0.3537667498271245,
      "maxDrawdown": 0.49519460360044243,
      "worstDay": 0.10068071051677607,
      "reasons": [
@@ -3975,34 +3975,35 @@
      "analyst forecasts"
     ]
    },
-   "deltaComposite": 2.1817818554879835,
+   "deltaComposite": -1.2756795634048927,
    "isNew": false
   },
   {
    "id": "CMCSA",
    "symbol": "CMCSA",
    "name": "Comcast",
-   "price": 25.2,
+   "price": 25.65,
    "currency": "USD",
-   "move1": -0.006309148264984188,
-   "move30": 0.08761329305135934,
+   "move1": 0.017857142857142794,
+   "move30": 0.059042113955408704,
    "rating": {
     "id": "CMCSA",
     "symbol": "CMCSA",
     "name": "Comcast",
     "kind": "equity",
     "stars": 1,
-    "composite": 33.124144126658535,
+    "composite": 31.142832416152434,
     "trend": {
-     "score": 25.309499470356823,
+     "score": 22.007313286179986,
      "confidence": 1,
      "reasons": [
-      "Price is 6.0% above its 50-day average.",
+      "Price is 7.9% above its 50-day average.",
       "The 50-day average sits below the 200-day — a long-term downtrend.",
-      "Three-month return -0.8%.",
-      "Six-month return -19.7%.",
+      "Three-month return +2.5%.",
+      "Six-month return -18.9%.",
       "The underlying direction over six months is down.",
-      "22.4% below its 12-month high."
+      "Stretched further above its own 50-day average than it has been 93% of this year. Scored down: a run this extended has more room to snap back than to continue.",
+      "21.0% below its 12-month high."
      ]
     },
     "analyst": {
@@ -4040,7 +4041,7 @@
     },
     "risk": {
      "band": "high",
-     "annualisedVol": 0.30630326304694055,
+     "annualisedVol": 0.3066411267327518,
      "maxDrawdown": 0.3882124276049047,
      "worstDay": 0.1289506953223768,
      "reasons": [
@@ -4056,34 +4057,35 @@
      "analyst forecasts"
     ]
    },
-   "deltaComposite": 0.7890180524103485,
+   "deltaComposite": -1.9813117105061018,
    "isNew": false
   },
   {
    "id": "T",
    "symbol": "T",
    "name": "AT&T",
-   "price": 24.049999,
+   "price": 24.5,
    "currency": "USD",
-   "move1": 0.010928919714165541,
-   "move30": 0.058538688380281645,
+   "move1": 0.01871106106906706,
+   "move30": 0.12282309807516034,
    "rating": {
     "id": "T",
     "symbol": "T",
     "name": "AT&T",
     "kind": "equity",
     "stars": 2,
-    "composite": 44.66914239509496,
+    "composite": 45.24685475912966,
     "trend": {
-     "score": 26.903385473306408,
+     "score": 27.866239413364248,
      "confidence": 1,
      "reasons": [
-      "Price is 6.1% above its 50-day average.",
+      "Price is 8.1% above its 50-day average.",
       "The 50-day average sits below the 200-day — a long-term downtrend.",
-      "Three-month return -4.4%.",
-      "Six-month return -11.4%.",
+      "Three-month return -1.5%.",
+      "Six-month return -9.6%.",
       "The underlying direction over six months is down.",
-      "18.8% below its 12-month high."
+      "Stretched further above its own 50-day average than it has been 91% of this year. Scored down: a run this extended has more room to snap back than to continue.",
+      "17.3% below its 12-month high."
      ]
     },
     "analyst": {
@@ -4121,7 +4123,7 @@
     },
     "risk": {
      "band": "high",
-     "annualisedVol": 0.2485963348189675,
+     "annualisedVol": 0.24901180469601117,
      "maxDrawdown": 0.30857528696826475,
      "worstDay": 0.06853146853146852,
      "reasons": [
@@ -4137,34 +4139,34 @@
      "analyst forecasts"
     ]
    },
-   "deltaComposite": 1.231921059668494,
+   "deltaComposite": 0.5777123640347028,
    "isNew": false
   },
   {
    "id": "VZ",
    "symbol": "VZ",
    "name": "Verizon",
-   "price": 47.029999,
+   "price": 47.27,
    "currency": "USD",
-   "move1": -0.0006375265482889692,
-   "move30": 0.010528556080790619,
+   "move1": 0.005103147036001676,
+   "move30": 0.07188213477923533,
    "rating": {
     "id": "VZ",
     "symbol": "VZ",
     "name": "Verizon",
     "kind": "equity",
     "stars": 2,
-    "composite": 46.775993445661385,
+    "composite": 46.93332701850435,
     "trend": {
-     "score": 48.420899987013215,
+     "score": 48.683122608418174,
      "confidence": 1,
      "reasons": [
-      "Price is 3.8% above its 50-day average.",
+      "Price is 4.3% above its 50-day average.",
       "The 50-day average sits above the 200-day — a long-term uptrend.",
-      "Three-month return -0.4%.",
-      "Six-month return +1.6%.",
+      "Three-month return +0.1%.",
+      "Six-month return +0.5%.",
       "The underlying direction over six months is down.",
-      "8.5% below its 12-month high."
+      "8.0% below its 12-month high."
      ]
     },
     "analyst": {
@@ -4202,7 +4204,7 @@
     },
     "risk": {
      "band": "moderate",
-     "annualisedVol": 0.24205445017844895,
+     "annualisedVol": 0.24171832783228447,
      "maxDrawdown": 0.18275593616193075,
      "worstDay": 0.06582060658206068,
      "reasons": [
@@ -4218,7 +4220,7 @@
      "analyst forecasts"
     ]
    },
-   "deltaComposite": -0.05932435581806317,
+   "deltaComposite": 0.15733357284296545,
    "isNew": false
   }
  ]
